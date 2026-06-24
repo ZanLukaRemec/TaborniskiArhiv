@@ -1,0 +1,186 @@
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  background: #f6f7f9;
+}
+
+.sidebar {
+  background: #102623;
+  color: #f7fbf8;
+  padding: 28px 22px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 42px;
+}
+
+.brand-mark {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #d8efe0;
+  color: #102623;
+  font-weight: 800;
+}
+
+.brand h1,
+.topbar h2,
+.panel h3 {
+  margin: 0;
+}
+
+.brand h1 {
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: #6c7976;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.sidebar .eyebrow {
+  color: #afc5bf;
+}
+
+.nav-list {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-list a {
+  color: #d9e4e1;
+  text-decoration: none;
+  padding: 11px 12px;
+  border-radius: 6px;
+}
+
+.nav-list a:hover,
+.nav-list .active {
+  background: #213d38;
+  color: #ffffff;
+}
+
+.content {
+  padding: 32px;
+}
+
+.topbar,
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.topbar {
+  margin-bottom: 28px;
+}
+
+.topbar h2 {
+  font-size: 30px;
+}
+
+button {
+  border: 1px solid #b8c2bd;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #102623;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 10px 14px;
+}
+
+button:hover {
+  border-color: #102623;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-grid article,
+.panel {
+  background: #ffffff;
+  border: 1px solid #dce2df;
+  border-radius: 8px;
+}
+
+.summary-grid article {
+  padding: 20px;
+}
+
+.summary-grid p {
+  margin: 6px 0 0;
+  color: #52605c;
+}
+
+.metric {
+  color: #102623;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.panel {
+  padding: 22px;
+}
+
+.panel h3 {
+  font-size: 22px;
+}
+
+.empty-state {
+  margin-top: 18px;
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #b8c2bd;
+  border-radius: 8px;
+  color: #52605c;
+}
+
+@media (max-width: 820px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    padding: 20px;
+  }
+
+  .brand {
+    margin-bottom: 20px;
+  }
+
+  .nav-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .content {
+    padding: 22px;
+  }
+
+  .topbar,
+  .panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
