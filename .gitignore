@@ -33,3 +33,6 @@ Thumbs.db
 # Runtime uploads/backups
 backend/uploads/
 backend/backups/
+
+# Local database dumps
+*.sql
