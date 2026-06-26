@@ -33,19 +33,21 @@ function ArchiveTree({ loading, onSelectReport, reports, selectedReportId }) {
         const yearCount = categories.reduce((count, category) => count + categoryGroups[category].length, 0)
 
         return (
-          <section className="year-group" key={year}>
-            <header className="year-heading">
+          <details className="year-group" key={year}>
+            <summary className="year-heading">
+              <span className="toggle-icon" aria-hidden="true">›</span>
               <span>{year}</span>
               <small>{yearCount} dokumentov</small>
-            </header>
+            </summary>
 
             <div className="category-stack">
               {categories.map((category) => (
-                <section className="category-group" key={`${year}-${category}`}>
-                  <div className="category-heading">
+                <details className="category-group" key={`${year}-${category}`}>
+                  <summary className="category-heading">
+                    <span className="toggle-icon" aria-hidden="true">›</span>
                     <h4>{category}</h4>
-                    <span>{categoryGroups[category].length}</span>
-                  </div>
+                    <span className="count-pill">{categoryGroups[category].length}</span>
+                  </summary>
 
                   <div className="report-stack">
                     {categoryGroups[category].map((report) => (
@@ -62,10 +64,10 @@ function ArchiveTree({ loading, onSelectReport, reports, selectedReportId }) {
                       </button>
                     ))}
                   </div>
-                </section>
+                </details>
               ))}
             </div>
-          </section>
+          </details>
         )
       })}
     </div>

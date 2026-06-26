@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getCategories, getReport, getReports } from './api'
 import ArchiveFilters from './components/ArchiveFilters'
 import ArchiveTree from './components/ArchiveTree'
 import ReportDetails from './components/ReportDetails'
 import Sidebar from './components/Sidebar'
-import SummaryCards from './components/SummaryCards'
 import './App.css'
 
 function uniqueYears(reports) {
@@ -61,16 +60,6 @@ function App() {
     loadReports()
   }, [filters])
 
-  const archivedCount = useMemo(
-    () => reports.filter((report) => report.status === 'arhivirano').length,
-    [reports],
-  )
-
-  const draftCount = useMemo(
-    () => reports.filter((report) => report.status === 'osnutek').length,
-    [reports],
-  )
-
   function updateFilter(name, value) {
     setFilters((current) => ({ ...current, [name]: value }))
   }
@@ -100,25 +89,18 @@ function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">Arhiv in administracija</p>
-            <h2>Pregled taborniških dokumentov</h2>
+            <h2>Arhiv poročil</h2>
           </div>
           <button className="button primary" type="button">Prijava</button>
         </header>
 
         {error && <div className="notice">{error}</div>}
 
-        <SummaryCards
-          archivedCount={archivedCount}
-          categoryCount={categories.length}
-          draftCount={draftCount}
-          reportCount={reports.length}
-        />
-
         <section className="archive-panel" id="arhiv">
           <div className="panel-header">
             <div>
-              <p className="eyebrow">Hierarhija arhiva</p>
-              <h3>Leta, kategorije in poročila</h3>
+              <p className="eyebrow">Brskanje po arhivu</p>
+              <h3>Odpri leto, nato kategorijo</h3>
             </div>
             <button className="button primary" type="button">Novo poročilo</button>
           </div>
