@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import {
+  createReport,
   getCategories,
   getCurrentUser,
+  getGroups,
   getReport,
   getReports,
   login,
@@ -10,6 +12,7 @@ import {
 import ArchiveFilters from './components/ArchiveFilters'
 import ArchiveTree from './components/ArchiveTree'
 import LoginDialog from './components/LoginDialog'
+import NewReportDialog from './components/NewReportDialog'
 import ReportDetails from './components/ReportDetails'
 import Sidebar from './components/Sidebar'
 import './App.css'
@@ -22,6 +25,7 @@ function uniqueYears(reports) {
 function App() {
   const [categories, setCategories] = useState([])
   const [reports, setReports] = useState([])
+  const [groups, setGroups] = useState([])
   const [selectedReport, setSelectedReport] = useState(null)
   const [years, setYears] = useState([])
   const [filters, setFilters] = useState({ leto: '', kategorija: '', q: '' })
@@ -29,6 +33,7 @@ function App() {
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
+  const [newReportOpen, setNewReportOpen] = useState(false)
   const [user, setUser] = useState(null)
   const [error, setError] = useState('')
 
@@ -49,12 +54,14 @@ function App() {
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [categoriesData, reportsData] = await Promise.all([
+        const [categoriesData, reportsData, groupsData] = await Promise.all([
           getCategories(),
           getReports(),
+          getGroups(),
         ])
 
         setCategories(categoriesData)
+        setGroups(groupsData)
         setYears(uniqueYears(reportsData))
       } catch {
         setError('Začetnih podatkov ni bilo mogoče naložiti.')
@@ -118,9 +125,32 @@ function App() {
     try {
       await logout()
       setUser(null)
+      setNewReportOpen(false)
     } catch (logoutError) {
       setError(logoutError.message)
     }
+  }
+
+  function openNewReport() {
+    if (user) {
+      setNewReportOpen(true)
+    } else {
+      setLoginOpen(true)
+    }
+  }
+
+  async function handleCreateReport(report) {
+    const created = await createReport(report)
+    const [reportsData, reportData] = await Promise.all([
+      getReports(),
+      getReport(created.id),
+    ])
+
+    setFilters({ leto: '', kategorija: '', q: '' })
+    setReports(reportsData)
+    setYears(uniqueYears(reportsData))
+    setSelectedReport(reportData)
+    setNewReportOpen(false)
   }
 
   return (
@@ -164,7 +194,14 @@ function App() {
               <p className="eyebrow">Brskanje po arhivu</p>
               <h3>Odpri leto, nato kategorijo</h3>
             </div>
-            <button className="button primary" type="button">Novo poročilo</button>
+            <button
+              className="button primary"
+              disabled={!authChecked}
+              onClick={openNewReport}
+              type="button"
+            >
+              Novo poročilo
+            </button>
           </div>
 
           <ArchiveFilters
@@ -194,6 +231,15 @@ function App() {
         <LoginDialog
           onClose={() => setLoginOpen(false)}
           onLogin={handleLogin}
+        />
+      )}
+
+      {newReportOpen && user && (
+        <NewReportDialog
+          categories={categories}
+          groups={groups}
+          onClose={() => setNewReportOpen(false)}
+          onCreate={handleCreateReport}
         />
       )}
     </div>

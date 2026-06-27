@@ -18,6 +18,10 @@ export function getCategories() {
   return requestJson('/api/kategorije')
 }
 
+export function getGroups() {
+  return requestJson('/api/vodi')
+}
+
 export function getReports(filters = {}) {
   const params = new URLSearchParams()
 
@@ -31,6 +35,14 @@ export function getReports(filters = {}) {
 
 export function getReport(id) {
   return requestJson(`/api/porocila/${id}`)
+}
+
+export function createReport(report) {
+  return requestJson('/api/porocila', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(report),
+  })
 }
 
 export async function getCurrentUser() {
