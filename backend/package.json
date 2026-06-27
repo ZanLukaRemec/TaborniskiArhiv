@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "check": "node --check src/index.js && node --check src/db.js && node --check src/routes/archive.js",
+    "check": "node --check src/index.js && node --check src/db.js && node --check src/auth.js && node --check src/routes/archive.js && node --check src/routes/auth.js",
     "test": "npm run check",
     "dev": "nodemon src/index.js",
     "start": "node src/index.js"
@@ -13,9 +13,11 @@
   "license": "ISC",
   "description": "Express API za taborniški arhiv.",
   "dependencies": {
+    "argon2": "^0.44.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "mysql2": "^3.22.5"
   },
   "devDependencies": {
