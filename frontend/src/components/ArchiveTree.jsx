@@ -35,7 +35,7 @@ function ArchiveTree({ loading, onSelectReport, reports, selectedReportId }) {
         return (
           <details className="year-group" key={year}>
             <summary className="year-heading">
-              <span className="toggle-icon" aria-hidden="true">›</span>
+              <span className="toggle-icon" aria-hidden="true" />
               <span>{year}</span>
               <small>{yearCount} dokumentov</small>
             </summary>
@@ -44,7 +44,7 @@ function ArchiveTree({ loading, onSelectReport, reports, selectedReportId }) {
               {categories.map((category) => (
                 <details className="category-group" key={`${year}-${category}`}>
                   <summary className="category-heading">
-                    <span className="toggle-icon" aria-hidden="true">›</span>
+                    <span className="toggle-icon" aria-hidden="true" />
                     <h4>{category}</h4>
                     <span className="count-pill">{categoryGroups[category].length}</span>
                   </summary>
@@ -57,10 +57,10 @@ function ArchiveTree({ loading, onSelectReport, reports, selectedReportId }) {
                         type="button"
                         onClick={() => onSelectReport(report.id)}
                       >
-                        <StatusBadge status={report.status} />
                         <span className="report-title">{report.naslov}</span>
                         <span className="report-meta">{report.avtor_ime} {report.avtor_priimek}</span>
                         <span className="report-meta">{report.ime_voda || 'Splošni arhiv'}</span>
+                        <StatusBadge status={report.status} />
                       </button>
                     ))}
                   </div>
