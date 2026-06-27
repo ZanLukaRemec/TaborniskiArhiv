@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
-import { getCategories, getReport, getReports } from './api'
+import {
+  getCategories,
+  getCurrentUser,
+  getReport,
+  getReports,
+  login,
+  logout,
+} from './api'
 import ArchiveFilters from './components/ArchiveFilters'
 import ArchiveTree from './components/ArchiveTree'
+import LoginDialog from './components/LoginDialog'
 import ReportDetails from './components/ReportDetails'
 import Sidebar from './components/Sidebar'
 import './App.css'
@@ -19,7 +27,24 @@ function App() {
   const [filters, setFilters] = useState({ leto: '', kategorija: '', q: '' })
   const [loadingReports, setLoadingReports] = useState(true)
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [loginOpen, setLoginOpen] = useState(false)
+  const [user, setUser] = useState(null)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    async function loadSession() {
+      try {
+        setUser(await getCurrentUser())
+      } catch {
+        setUser(null)
+      } finally {
+        setAuthChecked(true)
+      }
+    }
+
+    loadSession()
+  }, [])
 
   useEffect(() => {
     async function loadInitialData() {
@@ -81,6 +106,23 @@ function App() {
     }
   }
 
+  async function handleLogin(credentials) {
+    const loggedInUser = await login(credentials)
+    setUser(loggedInUser)
+    setLoginOpen(false)
+  }
+
+  async function handleLogout() {
+    setError('')
+
+    try {
+      await logout()
+      setUser(null)
+    } catch (logoutError) {
+      setError(logoutError.message)
+    }
+  }
+
   return (
     <div className="app-shell">
       <Sidebar />
@@ -91,7 +133,27 @@ function App() {
             <p className="eyebrow">Arhiv in administracija</p>
             <h2>Arhiv poročil</h2>
           </div>
-          <button className="button primary" type="button">Prijava</button>
+          {authChecked && (
+            user ? (
+              <div className="auth-area">
+                <div className="user-summary">
+                  <strong>{user.ime} {user.priimek}</strong>
+                  <span>{user.vloge.join(', ') || 'član'}</span>
+                </div>
+                <button className="button secondary" onClick={handleLogout} type="button">
+                  Odjava
+                </button>
+              </div>
+            ) : (
+              <button
+                className="button primary"
+                onClick={() => setLoginOpen(true)}
+                type="button"
+              >
+                Prijava
+              </button>
+            )
+          )}
         </header>
 
         {error && <div className="notice">{error}</div>}
@@ -127,6 +189,13 @@ function App() {
           </div>
         </section>
       </main>
+
+      {loginOpen && (
+        <LoginDialog
+          onClose={() => setLoginOpen(false)}
+          onLogin={handleLogin}
+        />
+      )}
     </div>
   )
 }

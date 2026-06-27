@@ -1,11 +1,17 @@
-async function requestJson(url) {
-  const response = await fetch(url)
+async function requestJson(url, options = {}) {
+  const response = await fetch(url, {
+    credentials: 'include',
+    ...options,
+  })
+  const data = response.status === 204
+    ? null
+    : await response.json().catch(() => null)
 
   if (!response.ok) {
-    throw new Error('Podatkov ni bilo mogoče naložiti.')
+    throw new Error(data?.error || 'Podatkov ni bilo mogoče naložiti.')
   }
 
-  return response.json()
+  return data
 }
 
 export function getCategories() {
@@ -25,4 +31,23 @@ export function getReports(filters = {}) {
 
 export function getReport(id) {
   return requestJson(`/api/porocila/${id}`)
+}
+
+export async function getCurrentUser() {
+  const data = await requestJson('/api/auth/me')
+  return data.user
+}
+
+export async function login(credentials) {
+  const data = await requestJson('/api/auth/prijava', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credentials),
+  })
+
+  return data.user
+}
+
+export function logout() {
+  return requestJson('/api/auth/odjava', { method: 'POST' })
 }
