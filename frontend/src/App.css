@@ -266,6 +266,47 @@ button:disabled {
   grid-column: 1 / -1;
 }
 
+.role-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  border: 3px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.role-picker legend {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  padding: 0 5px;
+}
+
+.report-form .role-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: var(--lavender);
+  padding: 6px 9px;
+  cursor: pointer;
+}
+
+.report-form .role-option input {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+}
+
+.report-form .role-option span {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+
 .login-form label {
   display: grid;
   gap: 6px;
@@ -309,6 +350,10 @@ button:disabled {
   background: var(--peach);
   color: var(--ink);
   padding: 12px 14px;
+}
+
+.notice.info {
+  background: var(--sky);
 }
 
 .archive-panel,

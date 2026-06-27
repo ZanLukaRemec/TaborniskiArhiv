@@ -8,7 +8,10 @@ async function requestJson(url, options = {}) {
     : await response.json().catch(() => null)
 
   if (!response.ok) {
-    throw new Error(data?.error || 'Podatkov ni bilo mogoče naložiti.')
+    const error = new Error(data?.error || 'Podatkov ni bilo mogoče naložiti.')
+    error.status = response.status
+    error.data = data
+    throw error
   }
 
   return data
@@ -16,10 +19,6 @@ async function requestJson(url, options = {}) {
 
 export function getCategories() {
   return requestJson('/api/kategorije')
-}
-
-export function getGroups() {
-  return requestJson('/api/vodi')
 }
 
 export function getReports(filters = {}) {
@@ -43,6 +42,10 @@ export function createReport(report) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(report),
   })
+}
+
+export function getReportOptions(year) {
+  return requestJson(`/api/porocila/moznosti?leto=${year}`)
 }
 
 export async function getCurrentUser() {

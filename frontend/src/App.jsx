@@ -3,8 +3,8 @@ import {
   createReport,
   getCategories,
   getCurrentUser,
-  getGroups,
   getReport,
+  getReportOptions,
   getReports,
   login,
   logout,
@@ -25,7 +25,6 @@ function uniqueYears(reports) {
 function App() {
   const [categories, setCategories] = useState([])
   const [reports, setReports] = useState([])
-  const [groups, setGroups] = useState([])
   const [selectedReport, setSelectedReport] = useState(null)
   const [years, setYears] = useState([])
   const [filters, setFilters] = useState({ leto: '', kategorija: '', q: '' })
@@ -36,6 +35,7 @@ function App() {
   const [newReportOpen, setNewReportOpen] = useState(false)
   const [user, setUser] = useState(null)
   const [error, setError] = useState('')
+  const [notification, setNotification] = useState('')
 
   useEffect(() => {
     async function loadSession() {
@@ -54,14 +54,12 @@ function App() {
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [categoriesData, reportsData, groupsData] = await Promise.all([
+        const [categoriesData, reportsData] = await Promise.all([
           getCategories(),
           getReports(),
-          getGroups(),
         ])
 
         setCategories(categoriesData)
-        setGroups(groupsData)
         setYears(uniqueYears(reportsData))
       } catch {
         setError('Začetnih podatkov ni bilo mogoče naložiti.')
@@ -132,6 +130,8 @@ function App() {
   }
 
   function openNewReport() {
+    setNotification('')
+
     if (user) {
       setNewReportOpen(true)
     } else {
@@ -140,17 +140,31 @@ function App() {
   }
 
   async function handleCreateReport(report) {
-    const created = await createReport(report)
-    const [reportsData, reportData] = await Promise.all([
-      getReports(),
-      getReport(created.id),
-    ])
+    try {
+      const created = await createReport(report)
+      const [reportsData, reportData] = await Promise.all([
+        getReports(),
+        getReport(created.id),
+      ])
 
-    setFilters({ leto: '', kategorija: '', q: '' })
-    setReports(reportsData)
-    setYears(uniqueYears(reportsData))
-    setSelectedReport(reportData)
-    setNewReportOpen(false)
+      setFilters({ leto: '', kategorija: '', q: '' })
+      setReports(reportsData)
+      setYears(uniqueYears(reportsData))
+      setSelectedReport(reportData)
+      setNotification('Osnutek je ustvarjen.')
+      setNewReportOpen(false)
+    } catch (createError) {
+      const existingReportId = createError.data?.porocilo?.id
+
+      if (createError.status === 409 && existingReportId) {
+        setSelectedReport(await getReport(existingReportId))
+        setNotification(createError.message)
+        setNewReportOpen(false)
+        return
+      }
+
+      throw createError
+    }
   }
 
   return (
@@ -187,6 +201,9 @@ function App() {
         </header>
 
         {error && <div className="notice">{error}</div>}
+        {notification && (
+          <div className="notice info" role="status">{notification}</div>
+        )}
 
         <section className="archive-panel" id="arhiv">
           <div className="panel-header">
@@ -236,8 +253,7 @@ function App() {
 
       {newReportOpen && user && (
         <NewReportDialog
-          categories={categories}
-          groups={groups}
+          loadOptions={getReportOptions}
           onClose={() => setNewReportOpen(false)}
           onCreate={handleCreateReport}
         />

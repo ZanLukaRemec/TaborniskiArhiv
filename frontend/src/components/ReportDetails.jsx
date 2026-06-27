@@ -37,8 +37,11 @@ function ReportDetails({ loading, report }) {
   }
 
   const content = parseJson(report.vsebina_obrazca)
+  const metadata = content?._meta
   const contentEntries = content
-    ? Object.entries(content).filter(([, value]) => value !== null && value !== '')
+    ? Object.entries(content).filter(([key, value]) => (
+        key !== '_meta' && value !== null && value !== ''
+      ))
     : []
 
   return (
@@ -65,6 +68,12 @@ function ReportDetails({ loading, report }) {
           <dt>Vod</dt>
           <dd>{report.ime_voda || 'Ni vezan na vod'}</dd>
         </div>
+        {metadata?.vloge_nazivi?.length > 0 && (
+          <div>
+            <dt>Funkcije</dt>
+            <dd>{metadata.vloge_nazivi.join(', ')}</dd>
+          </div>
+        )}
         <div>
           <dt>Oddano</dt>
           <dd>{formatDate(report.oddano_dne)}</dd>
