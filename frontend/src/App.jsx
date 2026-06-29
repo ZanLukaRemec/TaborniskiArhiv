@@ -6,6 +6,7 @@ import DashboardPage from './components/DashboardPage'
 import LoginPage from './components/LoginPage'
 import ReportPage from './components/ReportPage'
 import ReportWizard from './components/ReportWizard'
+import TemplatesPage from './components/TemplatesPage'
 import './App.css'
 
 const PAGE_TITLES = {
@@ -13,6 +14,7 @@ const PAGE_TITLES = {
   archive: 'Arhiv poročil',
   report: 'Poročilo',
   wizard: 'Novo poročilo',
+  templates: 'Predloge poročil',
 }
 
 function App() {
@@ -131,6 +133,10 @@ function App() {
           onOpenReport={openReport}
           onSubmitted={(id) => openReport(id, 'Poročilo je uspešno oddano in arhivirano.')}
         />
+      )}
+
+      {page === 'templates' && user.vloge.includes('administrator') && (
+        <TemplatesPage />
       )}
     </AppShell>
   )

@@ -13,6 +13,7 @@ function AppShell({
     <div className="app-shell">
       <Sidebar
         activePage={activePage}
+        isAdministrator={user.vloge.includes('administrator')}
         onNavigate={onNavigate}
         onNewReport={onNewReport}
       />

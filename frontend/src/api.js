@@ -65,6 +65,18 @@ export function getReportOptions(year) {
   return requestJson(`/api/porocila/moznosti?leto=${year}`)
 }
 
+export function getTemplates() {
+  return requestJson('/api/predloge')
+}
+
+export function createTemplate(template) {
+  return requestJson('/api/predloge', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(template),
+  })
+}
+
 export async function getCurrentUser() {
   const data = await requestJson('/api/auth/me')
   return data.user

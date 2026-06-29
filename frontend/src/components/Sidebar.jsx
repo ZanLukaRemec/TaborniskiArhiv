@@ -1,4 +1,4 @@
-function Sidebar({ activePage, onNavigate, onNewReport }) {
+function Sidebar({ activePage, isAdministrator, onNavigate, onNewReport }) {
   return (
     <aside className="sidebar">
       <button className="brand" onClick={() => onNavigate('dashboard')} type="button">
@@ -31,6 +31,15 @@ function Sidebar({ activePage, onNavigate, onNewReport }) {
         >
           Novo poročilo
         </button>
+        {isAdministrator && (
+          <button
+            className={activePage === 'templates' ? 'active' : ''}
+            onClick={() => onNavigate('templates')}
+            type="button"
+          >
+            Predloge
+          </button>
+        )}
       </nav>
 
       <p className="sidebar-note">
