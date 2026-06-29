@@ -27,7 +27,7 @@ function formatValue(value) {
   return String(value)
 }
 
-function ReportDetails({ loading, report }) {
+function ReportDetails({ loading, onEdit, report }) {
   if (loading) {
     return <div className="empty-state compact">Nalagam podrobnosti.</div>
   }
@@ -37,7 +37,11 @@ function ReportDetails({ loading, report }) {
   }
 
   const content = parseJson(report.vsebina_obrazca)
+  const template = parseJson(report.struktura_obrazca)
   const metadata = content?._meta
+  const fieldLabels = new Map(
+    (template?.polja || []).map((field) => [field.ime, field.oznaka]),
+  )
   const contentEntries = content
     ? Object.entries(content).filter(([key, value]) => (
         key !== '_meta' && value !== null && value !== ''
@@ -49,6 +53,11 @@ function ReportDetails({ loading, report }) {
       <div className="details-header">
         <StatusBadge status={report.status} />
         <h3>{report.naslov}</h3>
+        {onEdit && (
+          <button className="button secondary small" onClick={onEdit} type="button">
+            Uredi osnutek
+          </button>
+        )}
       </div>
 
       <dl className="details-list">
@@ -86,7 +95,7 @@ function ReportDetails({ loading, report }) {
           <dl className="content-fields">
             {contentEntries.map(([key, value]) => (
               <div key={key}>
-                <dt>{key}</dt>
+                <dt>{fieldLabels.get(key) || key}</dt>
                 <dd>{formatValue(value)}</dd>
               </div>
             ))}

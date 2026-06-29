@@ -36,6 +36,14 @@ export function getReport(id) {
   return requestJson(`/api/porocila/${id}`)
 }
 
+export function updateReport(id, content) {
+  return requestJson(`/api/porocila/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vsebina_obrazca: content }),
+  })
+}
+
 export function createReport(report) {
   return requestJson('/api/porocila', {
     method: 'POST',

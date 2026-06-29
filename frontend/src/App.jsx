@@ -8,9 +8,11 @@ import {
   getReports,
   login,
   logout,
+  updateReport,
 } from './api'
 import ArchiveFilters from './components/ArchiveFilters'
 import ArchiveTree from './components/ArchiveTree'
+import EditReportDialog from './components/EditReportDialog'
 import LoginDialog from './components/LoginDialog'
 import NewReportDialog from './components/NewReportDialog'
 import ReportDetails from './components/ReportDetails'
@@ -33,6 +35,7 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false)
   const [loginOpen, setLoginOpen] = useState(false)
   const [newReportOpen, setNewReportOpen] = useState(false)
+  const [editReportOpen, setEditReportOpen] = useState(false)
   const [user, setUser] = useState(null)
   const [error, setError] = useState('')
   const [notification, setNotification] = useState('')
@@ -124,6 +127,7 @@ function App() {
       await logout()
       setUser(null)
       setNewReportOpen(false)
+      setEditReportOpen(false)
     } catch (logoutError) {
       setError(logoutError.message)
     }
@@ -166,6 +170,30 @@ function App() {
       throw createError
     }
   }
+
+  async function handleSaveReport(id, content) {
+    await updateReport(id, content)
+    const [reportsData, reportData] = await Promise.all([
+      getReports(filters),
+      getReport(id),
+    ])
+
+    setReports(reportsData)
+    setSelectedReport(reportData)
+    setNotification('Osnutek je shranjen.')
+    setEditReportOpen(false)
+  }
+
+  const canEditSelectedReport = Boolean(
+    user
+    && selectedReport
+    && selectedReport.status === 'osnutek'
+    && selectedReport.struktura_obrazca
+    && (
+      selectedReport.avtor_id === user.id
+      || user.vloge.includes('administrator')
+    ),
+  )
 
   return (
     <div className="app-shell">
@@ -238,7 +266,11 @@ function App() {
             />
 
             <aside className="details-panel" aria-label="Podrobnosti poročila">
-              <ReportDetails loading={loadingDetails} report={selectedReport} />
+              <ReportDetails
+                loading={loadingDetails}
+                onEdit={canEditSelectedReport ? () => setEditReportOpen(true) : null}
+                report={selectedReport}
+              />
             </aside>
           </div>
         </section>
@@ -256,6 +288,14 @@ function App() {
           loadOptions={getReportOptions}
           onClose={() => setNewReportOpen(false)}
           onCreate={handleCreateReport}
+        />
+      )}
+
+      {editReportOpen && selectedReport && (
+        <EditReportDialog
+          onClose={() => setEditReportOpen(false)}
+          onSave={handleSaveReport}
+          report={selectedReport}
         />
       )}
     </div>
