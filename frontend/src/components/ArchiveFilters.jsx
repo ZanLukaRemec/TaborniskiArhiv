@@ -1,13 +1,15 @@
 function ArchiveFilters({ categories, filters, onChange, onClear, years }) {
+  const hasFilters = filters.q || filters.leto || filters.kategorija
+
   return (
     <form className="filters" onSubmit={(event) => event.preventDefault()}>
-      <label>
+      <label className="search-field">
         <span>Iskanje</span>
         <input
-          type="search"
-          value={filters.q}
           onChange={(event) => onChange('q', event.target.value)}
           placeholder="Naslov, avtor ali vsebina"
+          type="search"
+          value={filters.q}
         />
       </label>
 
@@ -31,7 +33,14 @@ function ArchiveFilters({ categories, filters, onChange, onClear, years }) {
         </select>
       </label>
 
-      <button className="button secondary" type="button" onClick={onClear}>Počisti</button>
+      <button
+        className="button ghost"
+        disabled={!hasFilters}
+        onClick={onClear}
+        type="button"
+      >
+        Počisti
+      </button>
     </form>
   )
 }

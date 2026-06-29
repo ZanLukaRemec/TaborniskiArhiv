@@ -3,6 +3,7 @@ const { requireAuth } = require('../auth');
 const pool = require('../db');
 
 const router = express.Router();
+const REPORT_STATUSES = new Set(['osnutek', 'arhivirano']);
 
 function getCategoryContext(name) {
   const normalizedName = name.trim().toLocaleLowerCase('sl-SI');
@@ -32,14 +33,84 @@ function parseMetadata(content) {
   return parseJsonObject(content)._meta || {};
 }
 
+function isAdministrator(user) {
+  return user.vloge.includes('administrator');
+}
+
+function canManageReport(report, user) {
+  return report.avtor_id === user.id || isAdministrator(user);
+}
+
+function normalizeFormContent(fields, submittedContent, metadata, requireComplete) {
+  if (!submittedContent || typeof submittedContent !== 'object' || Array.isArray(submittedContent)) {
+    return { error: 'Vsebina poročila ni veljavna.' };
+  }
+
+  const content = {};
+
+  if (Object.keys(metadata).length) {
+    content._meta = metadata;
+  }
+
+  for (const field of fields) {
+    const value = submittedContent[field.ime];
+    const isEmpty = value === undefined
+      || value === null
+      || (typeof value === 'string' && value.trim() === '');
+
+    if (isEmpty) {
+      if (requireComplete && field.obvezno) {
+        return { error: `Polje »${field.oznaka}« je obvezno.` };
+      }
+
+      continue;
+    }
+
+    if (field.tip === 'number') {
+      const numberValue = Number(value);
+
+      if (!Number.isFinite(numberValue)) {
+        return { error: `Polje »${field.oznaka}« mora biti število.` };
+      }
+
+      content[field.ime] = numberValue;
+    } else if (field.tip === 'date') {
+      const dateValue = String(value);
+      const parsedDate = new Date(`${dateValue}T00:00:00Z`);
+      const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(dateValue)
+        && !Number.isNaN(parsedDate.getTime())
+        && parsedDate.toISOString().slice(0, 10) === dateValue;
+
+      if (!isValidDate) {
+        return { error: `Polje »${field.oznaka}« mora biti veljaven datum.` };
+      }
+
+      content[field.ime] = dateValue;
+    } else if (field.tip === 'checkbox') {
+      content[field.ime] = Boolean(value);
+    } else {
+      content[field.ime] = String(value).trim();
+    }
+  }
+
+  return { content };
+}
+
 async function getReportOptions(userId, year) {
   const { from, to } = getYearBounds(year);
-  const [[categories], [roles], [groups]] = await Promise.all([
+  const [[categories], [templates], [roles], [groups]] = await Promise.all([
     pool.query(`
-      SELECT id, naziv
+      SELECT id, naziv, opis
       FROM kategorija_porocila
       ORDER BY naziv
     `),
+    pool.query(`
+      SELECT id, kategorija_id, struktura_obrazca
+      FROM predloga_obrazca
+      WHERE veljavno_od <= ?
+        AND (veljavno_do IS NULL OR veljavno_do >= ?)
+      ORDER BY kategorija_id, veljavno_od DESC
+    `, [to, from]),
     pool.query(`
       SELECT DISTINCT v.id, v.naziv
       FROM dodelitev_vloge dv
@@ -60,12 +131,27 @@ async function getReportOptions(userId, year) {
     `, [userId, to, from]),
   ]);
 
+  const templatesByCategory = new Map();
+
+  for (const template of templates) {
+    if (!templatesByCategory.has(template.kategorija_id)) {
+      templatesByCategory.set(template.kategorija_id, template);
+    }
+  }
+
   return {
     kategorije: categories
-      .map((category) => ({
-        ...category,
-        kontekst: getCategoryContext(category.naziv),
-      }))
+      .map((category) => {
+        const template = templatesByCategory.get(category.id);
+
+        return {
+          ...category,
+          kontekst: getCategoryContext(category.naziv),
+          predloga_id: template?.id || null,
+          struktura_obrazca: template?.struktura_obrazca || null,
+          ima_predlogo: Boolean(template),
+        };
+      })
       .filter((category) => (
         category.kontekst === 'osnovno'
         || (category.kontekst === 'vod' && groups.length > 0)
@@ -75,6 +161,25 @@ async function getReportOptions(userId, year) {
     vodi: groups,
   };
 }
+
+async function getEditableReport(reportId) {
+  const [rows] = await pool.query(`
+    SELECT
+      p.id,
+      p.status,
+      p.avtor_id,
+      p.vsebina_obrazca,
+      po.struktura_obrazca
+    FROM porocilo p
+    LEFT JOIN predloga_obrazca po ON po.id = p.predloga_id
+    WHERE p.id = ?
+    LIMIT 1
+  `, [reportId]);
+
+  return rows[0] || null;
+}
+
+router.use(requireAuth);
 
 router.get('/kategorije', async (req, res) => {
   try {
@@ -91,7 +196,7 @@ router.get('/kategorije', async (req, res) => {
   }
 });
 
-router.get('/porocila/moznosti', requireAuth, async (req, res) => {
+router.get('/porocila/moznosti', async (req, res) => {
   const year = Number(req.query.leto);
   const nextYear = new Date().getFullYear() + 1;
 
@@ -109,19 +214,57 @@ router.get('/porocila/moznosti', requireAuth, async (req, res) => {
 });
 
 router.get('/porocila', async (req, res) => {
-  const { leto, kategorija, q } = req.query;
-
+  const { leto, kategorija, q, status, moji, limit } = req.query;
   const where = [];
   const params = [];
 
   if (leto) {
+    const year = Number(leto);
+
+    if (!Number.isInteger(year)) {
+      res.status(400).json({ error: 'Arhivsko leto ni veljavno.' });
+      return;
+    }
+
     where.push('p.arhivirno_leto = ?');
-    params.push(Number(leto));
+    params.push(year);
   }
 
   if (kategorija) {
+    const categoryId = Number(kategorija);
+
+    if (!Number.isInteger(categoryId)) {
+      res.status(400).json({ error: 'Kategorija ni veljavna.' });
+      return;
+    }
+
     where.push('p.kategorija_porocila_id = ?');
-    params.push(Number(kategorija));
+    params.push(categoryId);
+  }
+
+  if (status) {
+    if (!REPORT_STATUSES.has(status)) {
+      res.status(400).json({ error: 'Status poročila ni veljaven.' });
+      return;
+    }
+
+    where.push('p.status = ?');
+    params.push(status);
+  }
+
+  if (moji !== undefined && moji !== '1') {
+    res.status(400).json({ error: 'Filter za lastna poročila ni veljaven.' });
+    return;
+  }
+
+  if (moji === '1') {
+    where.push('p.avtor_id = ?');
+    params.push(req.session.user.id);
+  }
+
+  if (!isAdministrator(req.session.user)) {
+    where.push('(p.status = \'arhivirano\' OR p.avtor_id = ?)');
+    params.push(req.session.user.id);
   }
 
   if (q) {
@@ -133,6 +276,20 @@ router.get('/porocila', async (req, res) => {
       OR CAST(p.vsebina_obrazca AS CHAR) LIKE ?
     )`);
     params.push(search, search, search, search);
+  }
+
+  let limitSql = '';
+
+  if (limit !== undefined) {
+    const resultLimit = Number(limit);
+
+    if (!Number.isInteger(resultLimit) || resultLimit < 1 || resultLimit > 100) {
+      res.status(400).json({ error: 'Omejitev števila poročil ni veljavna.' });
+      return;
+    }
+
+    limitSql = 'LIMIT ?';
+    params.push(resultLimit);
   }
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -160,6 +317,7 @@ router.get('/porocila', async (req, res) => {
       LEFT JOIN vod v ON v.id = p.vod_id
       ${whereSql}
       ORDER BY p.arhivirno_leto DESC, p.oddano_dne DESC, p.ustvarjeno_dne DESC
+      ${limitSql}
     `, params);
 
     res.json(rows);
@@ -169,7 +327,7 @@ router.get('/porocila', async (req, res) => {
   }
 });
 
-router.post('/porocila', requireAuth, async (req, res) => {
+router.post('/porocila', async (req, res) => {
   const kategorijaId = Number(req.body.kategorija_id);
   const arhivirnoLeto = Number(req.body.arhivirno_leto);
   const nextYear = new Date().getFullYear() + 1;
@@ -190,6 +348,11 @@ router.post('/porocila', requireAuth, async (req, res) => {
 
     if (!category) {
       res.status(403).json({ error: 'Za izbrano kategorijo nimaš ustrezne vloge.' });
+      return;
+    }
+
+    if (!category.predloga_id) {
+      res.status(400).json({ error: 'Izbrana kategorija nima aktivne predloge.' });
       return;
     }
 
@@ -283,20 +446,6 @@ router.post('/porocila', requireAuth, async (req, res) => {
       return;
     }
 
-    const [templates] = await pool.query(`
-      SELECT id
-      FROM predloga_obrazca
-      WHERE kategorija_id = ?
-        AND veljavno_od <= ?
-        AND (veljavno_do IS NULL OR veljavno_do >= ?)
-      ORDER BY veljavno_od DESC
-      LIMIT 1
-    `, [
-      kategorijaId,
-      `${arhivirnoLeto}-12-31`,
-      `${arhivirnoLeto}-01-01`,
-    ]);
-
     const group = options.vodi.find((item) => item.id === vodId);
     const contextName = category.kontekst === 'vod'
       ? group.ime_voda
@@ -329,7 +478,7 @@ router.post('/porocila', requireAuth, async (req, res) => {
       naslov,
       formContent,
       arhivirnoLeto,
-      templates[0]?.id || null,
+      category.predloga_id,
       kategorijaId,
       vodId,
       req.session.user.id,
@@ -346,7 +495,7 @@ router.post('/porocila', requireAuth, async (req, res) => {
   }
 });
 
-router.put('/porocila/:id', requireAuth, async (req, res) => {
+router.put('/porocila/:id', async (req, res) => {
   const reportId = Number(req.params.id);
 
   if (!Number.isInteger(reportId)) {
@@ -355,28 +504,14 @@ router.put('/porocila/:id', requireAuth, async (req, res) => {
   }
 
   try {
-    const [rows] = await pool.query(`
-      SELECT
-        p.id,
-        p.status,
-        p.avtor_id,
-        p.vsebina_obrazca,
-        po.struktura_obrazca
-      FROM porocilo p
-      LEFT JOIN predloga_obrazca po ON po.id = p.predloga_id
-      WHERE p.id = ?
-      LIMIT 1
-    `, [reportId]);
-    const report = rows[0];
+    const report = await getEditableReport(reportId);
 
     if (!report) {
       res.status(404).json({ error: 'Poročilo ne obstaja.' });
       return;
     }
 
-    const isAdministrator = req.session.user.vloge.includes('administrator');
-
-    if (report.avtor_id !== req.session.user.id && !isAdministrator) {
+    if (!canManageReport(report, req.session.user)) {
       res.status(403).json({ error: 'Urejaš lahko samo svoje osnutke.' });
       return;
     }
@@ -388,74 +523,29 @@ router.put('/porocila/:id', requireAuth, async (req, res) => {
 
     const template = parseJsonObject(report.struktura_obrazca);
     const fields = Array.isArray(template.polja) ? template.polja : [];
-    const submittedContent = req.body.vsebina_obrazca;
 
     if (!fields.length) {
       res.status(400).json({ error: 'Poročilo nima predloge za urejanje.' });
       return;
     }
 
-    if (!submittedContent || typeof submittedContent !== 'object' || Array.isArray(submittedContent)) {
-      res.status(400).json({ error: 'Vsebina poročila ni veljavna.' });
+    const normalized = normalizeFormContent(
+      fields,
+      req.body.vsebina_obrazca,
+      parseMetadata(report.vsebina_obrazca),
+      false,
+    );
+
+    if (normalized.error) {
+      res.status(400).json({ error: normalized.error });
       return;
-    }
-
-    const normalizedContent = {};
-    const metadata = parseMetadata(report.vsebina_obrazca);
-
-    if (Object.keys(metadata).length) {
-      normalizedContent._meta = metadata;
-    }
-
-    for (const field of fields) {
-      const value = submittedContent[field.ime];
-      const isEmpty = value === undefined
-        || value === null
-        || (typeof value === 'string' && value.trim() === '');
-
-      if (isEmpty) {
-        if (field.obvezno) {
-          res.status(400).json({ error: `Polje »${field.oznaka}« je obvezno.` });
-          return;
-        }
-
-        continue;
-      }
-
-      if (field.tip === 'number') {
-        const numberValue = Number(value);
-
-        if (!Number.isFinite(numberValue)) {
-          res.status(400).json({ error: `Polje »${field.oznaka}« mora biti število.` });
-          return;
-        }
-
-        normalizedContent[field.ime] = numberValue;
-      } else if (field.tip === 'date') {
-        const dateValue = String(value);
-        const parsedDate = new Date(`${dateValue}T00:00:00Z`);
-        const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(dateValue)
-          && !Number.isNaN(parsedDate.getTime())
-          && parsedDate.toISOString().slice(0, 10) === dateValue;
-
-        if (!isValidDate) {
-          res.status(400).json({ error: `Polje »${field.oznaka}« mora biti veljaven datum.` });
-          return;
-        }
-
-        normalizedContent[field.ime] = dateValue;
-      } else if (field.tip === 'checkbox') {
-        normalizedContent[field.ime] = Boolean(value);
-      } else {
-        normalizedContent[field.ime] = String(value).trim();
-      }
     }
 
     await pool.query(`
       UPDATE porocilo
       SET vsebina_obrazca = ?
       WHERE id = ?
-    `, [JSON.stringify(normalizedContent), reportId]);
+    `, [JSON.stringify(normalized.content), reportId]);
 
     res.json({ id: reportId });
   } catch (error) {
@@ -464,7 +554,79 @@ router.put('/porocila/:id', requireAuth, async (req, res) => {
   }
 });
 
+router.post('/porocila/:id/oddaja', async (req, res) => {
+  const reportId = Number(req.params.id);
+
+  if (!Number.isInteger(reportId)) {
+    res.status(400).json({ error: 'Neveljaven identifikator poročila.' });
+    return;
+  }
+
+  try {
+    const report = await getEditableReport(reportId);
+
+    if (!report) {
+      res.status(404).json({ error: 'Poročilo ne obstaja.' });
+      return;
+    }
+
+    if (!canManageReport(report, req.session.user)) {
+      res.status(403).json({ error: 'Oddaš lahko samo svoje osnutke.' });
+      return;
+    }
+
+    if (report.status !== 'osnutek') {
+      res.status(409).json({ error: 'Poročilo je že arhivirano.' });
+      return;
+    }
+
+    const template = parseJsonObject(report.struktura_obrazca);
+    const fields = Array.isArray(template.polja) ? template.polja : [];
+
+    if (!fields.length) {
+      res.status(400).json({ error: 'Poročilo nima predloge za oddajo.' });
+      return;
+    }
+
+    const currentContent = parseJsonObject(report.vsebina_obrazca);
+    const normalized = normalizeFormContent(
+      fields,
+      currentContent,
+      parseMetadata(currentContent),
+      true,
+    );
+
+    if (normalized.error) {
+      res.status(400).json({ error: normalized.error });
+      return;
+    }
+
+    const [result] = await pool.query(`
+      UPDATE porocilo
+      SET vsebina_obrazca = ?, status = 'arhivirano', oddano_dne = NOW()
+      WHERE id = ? AND status = 'osnutek'
+    `, [JSON.stringify(normalized.content), reportId]);
+
+    if (!result.affectedRows) {
+      res.status(409).json({ error: 'Poročilo je bilo medtem že arhivirano.' });
+      return;
+    }
+
+    res.json({ id: reportId, status: 'arhivirano' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Poročila ni bilo mogoče oddati.' });
+  }
+});
+
 router.get('/porocila/:id', async (req, res) => {
+  const reportId = Number(req.params.id);
+
+  if (!Number.isInteger(reportId)) {
+    res.status(400).json({ error: 'Neveljaven identifikator poročila.' });
+    return;
+  }
+
   try {
     const [rows] = await pool.query(`
       SELECT
@@ -492,14 +654,24 @@ router.get('/porocila/:id', async (req, res) => {
       LEFT JOIN predloga_obrazca po ON po.id = p.predloga_id
       WHERE p.id = ?
       LIMIT 1
-    `, [Number(req.params.id)]);
+    `, [reportId]);
+    const report = rows[0];
 
-    if (!rows.length) {
+    if (!report) {
       res.status(404).json({ error: 'Poročilo ne obstaja.' });
       return;
     }
 
-    res.json(rows[0]);
+    const canView = report.status === 'arhivirano'
+      || report.avtor_id === req.session.user.id
+      || isAdministrator(req.session.user);
+
+    if (!canView) {
+      res.status(403).json({ error: 'Do tega osnutka nimaš dostopa.' });
+      return;
+    }
+
+    res.json(report);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Poročila ni bilo mogoče pridobiti.' });

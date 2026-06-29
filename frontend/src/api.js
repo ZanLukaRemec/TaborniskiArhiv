@@ -27,6 +27,9 @@ export function getReports(filters = {}) {
   if (filters.leto) params.set('leto', filters.leto)
   if (filters.kategorija) params.set('kategorija', filters.kategorija)
   if (filters.q?.trim()) params.set('q', filters.q.trim())
+  if (filters.status) params.set('status', filters.status)
+  if (filters.moji) params.set('moji', '1')
+  if (filters.limit) params.set('limit', filters.limit)
 
   const query = params.toString()
   return requestJson(`/api/porocila${query ? `?${query}` : ''}`)
@@ -41,6 +44,12 @@ export function updateReport(id, content) {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ vsebina_obrazca: content }),
+  })
+}
+
+export function submitReport(id) {
+  return requestJson(`/api/porocila/${id}/oddaja`, {
+    method: 'POST',
   })
 }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-function LoginDialog({ onClose, onLogin }) {
+function LoginPage({ onLogin }) {
   const [prijava, setPrijava] = useState('')
   const [geslo, setGeslo] = useState('')
   const [error, setError] = useState('')
@@ -21,28 +21,20 @@ function LoginDialog({ onClose, onLogin }) {
   }
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section
-        aria-labelledby="login-title"
-        aria-modal="true"
-        className="login-dialog"
-        role="dialog"
-      >
-        <header className="login-header">
-          <div>
-            <p className="eyebrow">Dostop za člane</p>
-            <h3 id="login-title">Prijava</h3>
-          </div>
-          <button
-            aria-label="Zapri prijavo"
-            className="icon-button"
-            onClick={onClose}
-            title="Zapri"
-            type="button"
-          >
-            ×
-          </button>
-        </header>
+    <main className="login-page">
+      <section className="login-intro">
+        <div className="brand-seal">TA</div>
+        <p className="eyebrow">Rod Puntarjev Tolmin</p>
+        <h1>Taborniški arhiv</h1>
+        <p>Urejena poročila, skupen spomin rodu.</p>
+      </section>
+
+      <section className="login-panel" aria-labelledby="login-title">
+        <div>
+          <p className="eyebrow">Dostop za člane</p>
+          <h2 id="login-title">Prijava</h2>
+          <p className="muted">Za nadaljevanje se prijavi s svojim računom.</p>
+        </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
           <label>
@@ -69,20 +61,15 @@ function LoginDialog({ onClose, onLogin }) {
             />
           </label>
 
-          {error && <div className="login-error" role="alert">{error}</div>}
+          {error && <div className="form-error" role="alert">{error}</div>}
 
-          <div className="login-actions">
-            <button className="button secondary" onClick={onClose} type="button">
-              Prekliči
-            </button>
-            <button className="button primary" disabled={loading} type="submit">
-              {loading ? 'Prijavljam ...' : 'Prijava'}
-            </button>
-          </div>
+          <button className="button primary wide" disabled={loading} type="submit">
+            {loading ? 'Prijavljam ...' : 'Prijava'}
+          </button>
         </form>
       </section>
-    </div>
+    </main>
   )
 }
 
-export default LoginDialog
+export default LoginPage

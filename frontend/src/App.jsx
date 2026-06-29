@@ -1,47 +1,30 @@
 import { useEffect, useState } from 'react'
-import {
-  createReport,
-  getCategories,
-  getCurrentUser,
-  getReport,
-  getReportOptions,
-  getReports,
-  login,
-  logout,
-  updateReport,
-} from './api'
-import ArchiveFilters from './components/ArchiveFilters'
-import ArchiveTree from './components/ArchiveTree'
-import EditReportDialog from './components/EditReportDialog'
-import LoginDialog from './components/LoginDialog'
-import NewReportDialog from './components/NewReportDialog'
-import ReportDetails from './components/ReportDetails'
-import Sidebar from './components/Sidebar'
+import { getCurrentUser, login, logout } from './api'
+import AppShell from './components/AppShell'
+import ArchivePage from './components/ArchivePage'
+import DashboardPage from './components/DashboardPage'
+import LoginPage from './components/LoginPage'
+import ReportPage from './components/ReportPage'
+import ReportWizard from './components/ReportWizard'
 import './App.css'
 
-function uniqueYears(reports) {
-  return [...new Set(reports.map((report) => report.arhivirno_leto))]
-    .sort((a, b) => b - a)
+const PAGE_TITLES = {
+  dashboard: 'Delovna plošča',
+  archive: 'Arhiv poročil',
+  report: 'Poročilo',
+  wizard: 'Novo poročilo',
 }
 
 function App() {
-  const [categories, setCategories] = useState([])
-  const [reports, setReports] = useState([])
-  const [selectedReport, setSelectedReport] = useState(null)
-  const [years, setYears] = useState([])
-  const [filters, setFilters] = useState({ leto: '', kategorija: '', q: '' })
-  const [loadingReports, setLoadingReports] = useState(true)
-  const [loadingDetails, setLoadingDetails] = useState(false)
   const [authChecked, setAuthChecked] = useState(false)
-  const [loginOpen, setLoginOpen] = useState(false)
-  const [newReportOpen, setNewReportOpen] = useState(false)
-  const [editReportOpen, setEditReportOpen] = useState(false)
   const [user, setUser] = useState(null)
-  const [error, setError] = useState('')
+  const [page, setPage] = useState('dashboard')
+  const [reportId, setReportId] = useState(null)
+  const [wizardReportId, setWizardReportId] = useState(null)
   const [notification, setNotification] = useState('')
 
   useEffect(() => {
-    async function loadSession() {
+    async function restoreSession() {
       try {
         setUser(await getCurrentUser())
       } catch {
@@ -51,254 +34,105 @@ function App() {
       }
     }
 
-    loadSession()
+    restoreSession()
   }, [])
 
-  useEffect(() => {
-    async function loadInitialData() {
-      try {
-        const [categoriesData, reportsData] = await Promise.all([
-          getCategories(),
-          getReports(),
-        ])
-
-        setCategories(categoriesData)
-        setYears(uniqueYears(reportsData))
-      } catch {
-        setError('Začetnih podatkov ni bilo mogoče naložiti.')
-      }
-    }
-
-    loadInitialData()
-  }, [])
-
-  useEffect(() => {
-    async function loadReports() {
-      setLoadingReports(true)
-      setError('')
-
-      try {
-        const data = await getReports(filters)
-        setReports(data)
-        setSelectedReport((current) => (
-          current && data.some((report) => report.id === current.id) ? current : null
-        ))
-      } catch {
-        setError('Poročil ni bilo mogoče naložiti.')
-      } finally {
-        setLoadingReports(false)
-      }
-    }
-
-    loadReports()
-  }, [filters])
-
-  function updateFilter(name, value) {
-    setFilters((current) => ({ ...current, [name]: value }))
+  function navigate(nextPage) {
+    setNotification('')
+    setPage(nextPage)
+    window.scrollTo(0, 0)
   }
 
-  function clearFilters() {
-    setFilters({ leto: '', kategorija: '', q: '' })
+  function openReport(id, message = '') {
+    setReportId(id)
+    setNotification(message)
+    setPage('report')
+    window.scrollTo(0, 0)
   }
 
-  async function selectReport(id) {
-    setLoadingDetails(true)
-    setError('')
-
-    try {
-      setSelectedReport(await getReport(id))
-    } catch {
-      setError('Podrobnosti poročila ni bilo mogoče naložiti.')
-    } finally {
-      setLoadingDetails(false)
-    }
+  function openWizard(id = null) {
+    setWizardReportId(id)
+    setNotification('')
+    setPage('wizard')
+    window.scrollTo(0, 0)
   }
 
   async function handleLogin(credentials) {
     const loggedInUser = await login(credentials)
     setUser(loggedInUser)
-    setLoginOpen(false)
+    setPage('dashboard')
   }
 
   async function handleLogout() {
-    setError('')
-
-    try {
-      await logout()
-      setUser(null)
-      setNewReportOpen(false)
-      setEditReportOpen(false)
-    } catch (logoutError) {
-      setError(logoutError.message)
-    }
-  }
-
-  function openNewReport() {
+    await logout()
+    setUser(null)
+    setPage('dashboard')
+    setReportId(null)
+    setWizardReportId(null)
     setNotification('')
-
-    if (user) {
-      setNewReportOpen(true)
-    } else {
-      setLoginOpen(true)
-    }
   }
 
-  async function handleCreateReport(report) {
-    try {
-      const created = await createReport(report)
-      const [reportsData, reportData] = await Promise.all([
-        getReports(),
-        getReport(created.id),
-      ])
-
-      setFilters({ leto: '', kategorija: '', q: '' })
-      setReports(reportsData)
-      setYears(uniqueYears(reportsData))
-      setSelectedReport(reportData)
-      setNotification('Osnutek je ustvarjen.')
-      setNewReportOpen(false)
-    } catch (createError) {
-      const existingReportId = createError.data?.porocilo?.id
-
-      if (createError.status === 409 && existingReportId) {
-        setSelectedReport(await getReport(existingReportId))
-        setNotification(createError.message)
-        setNewReportOpen(false)
-        return
-      }
-
-      throw createError
-    }
+  if (!authChecked) {
+    return (
+      <main className="session-loading">
+        <div className="brand-seal">TA</div>
+        <p>Odpiram taborniški arhiv ...</p>
+      </main>
+    )
   }
 
-  async function handleSaveReport(id, content) {
-    await updateReport(id, content)
-    const [reportsData, reportData] = await Promise.all([
-      getReports(filters),
-      getReport(id),
-    ])
-
-    setReports(reportsData)
-    setSelectedReport(reportData)
-    setNotification('Osnutek je shranjen.')
-    setEditReportOpen(false)
+  if (!user) {
+    return <LoginPage onLogin={handleLogin} />
   }
-
-  const canEditSelectedReport = Boolean(
-    user
-    && selectedReport
-    && selectedReport.status === 'osnutek'
-    && selectedReport.struktura_obrazca
-    && (
-      selectedReport.avtor_id === user.id
-      || user.vloge.includes('administrator')
-    ),
-  )
 
   return (
-    <div className="app-shell">
-      <Sidebar />
+    <AppShell
+      activePage={page}
+      onLogout={handleLogout}
+      onNavigate={navigate}
+      onNewReport={() => openWizard()}
+      pageTitle={PAGE_TITLES[page]}
+      user={user}
+    >
+      {notification && (
+        <div className="notice info" role="status">{notification}</div>
+      )}
 
-      <main className="content">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">Arhiv in administracija</p>
-            <h2>Arhiv poročil</h2>
-          </div>
-          {authChecked && (
-            user ? (
-              <div className="auth-area">
-                <div className="user-summary">
-                  <strong>{user.ime} {user.priimek}</strong>
-                  <span>{user.vloge.join(', ') || 'član'}</span>
-                </div>
-                <button className="button secondary" onClick={handleLogout} type="button">
-                  Odjava
-                </button>
-              </div>
-            ) : (
-              <button
-                className="button primary"
-                onClick={() => setLoginOpen(true)}
-                type="button"
-              >
-                Prijava
-              </button>
-            )
-          )}
-        </header>
-
-        {error && <div className="notice">{error}</div>}
-        {notification && (
-          <div className="notice info" role="status">{notification}</div>
-        )}
-
-        <section className="archive-panel" id="arhiv">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Brskanje po arhivu</p>
-              <h3>Odpri leto, nato kategorijo</h3>
-            </div>
-            <button
-              className="button primary"
-              disabled={!authChecked}
-              onClick={openNewReport}
-              type="button"
-            >
-              Novo poročilo
-            </button>
-          </div>
-
-          <ArchiveFilters
-            categories={categories}
-            filters={filters}
-            onChange={updateFilter}
-            onClear={clearFilters}
-            years={years}
-          />
-
-          <div className="archive-layout">
-            <ArchiveTree
-              loading={loadingReports}
-              onSelectReport={selectReport}
-              reports={reports}
-              selectedReportId={selectedReport?.id}
-            />
-
-            <aside className="details-panel" aria-label="Podrobnosti poročila">
-              <ReportDetails
-                loading={loadingDetails}
-                onEdit={canEditSelectedReport ? () => setEditReportOpen(true) : null}
-                report={selectedReport}
-              />
-            </aside>
-          </div>
-        </section>
-      </main>
-
-      {loginOpen && (
-        <LoginDialog
-          onClose={() => setLoginOpen(false)}
-          onLogin={handleLogin}
+      {page === 'dashboard' && (
+        <DashboardPage
+          onNavigate={navigate}
+          onNewReport={() => openWizard()}
+          onOpenReport={openReport}
+          user={user}
         />
       )}
 
-      {newReportOpen && user && (
-        <NewReportDialog
-          loadOptions={getReportOptions}
-          onClose={() => setNewReportOpen(false)}
-          onCreate={handleCreateReport}
+      {page === 'archive' && (
+        <ArchivePage
+          onNewReport={() => openWizard()}
+          onOpenReport={openReport}
         />
       )}
 
-      {editReportOpen && selectedReport && (
-        <EditReportDialog
-          onClose={() => setEditReportOpen(false)}
-          onSave={handleSaveReport}
-          report={selectedReport}
+      {page === 'report' && reportId && (
+        <ReportPage
+          onBack={() => navigate('archive')}
+          onEdit={(id) => openWizard(id)}
+          reportId={reportId}
+          user={user}
         />
       )}
-    </div>
+
+      {page === 'wizard' && (
+        <ReportWizard
+          initialReportId={wizardReportId}
+          key={wizardReportId || 'new-report'}
+          onCancel={() => navigate(wizardReportId ? 'report' : 'dashboard')}
+          onOpenReport={openReport}
+          onSubmitted={(id) => openReport(id, 'Poročilo je uspešno oddano in arhivirano.')}
+        />
+      )}
+    </AppShell>
   )
 }
 

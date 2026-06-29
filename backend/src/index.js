@@ -49,8 +49,8 @@ app.get('/api/db-health', async (req, res) => {
   }
 });
 
-app.use('/api', archiveRoutes);
 app.use('/api', authRoutes);
+app.use('/api', archiveRoutes);
 
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Endpoint ne obstaja.' });

@@ -1,109 +1,81 @@
 import StatusBadge from './StatusBadge'
+import { formatDate, formatValue, parseJson } from '../reportUtils'
 
-function formatDate(value) {
-  if (!value) return 'Ni datuma'
-
-  return new Intl.DateTimeFormat('sl-SI', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(value))
-}
-
-function parseJson(value) {
-  if (!value) return null
-  if (typeof value === 'object') return value
-
-  try {
-    return JSON.parse(value)
-  } catch {
-    return null
-  }
-}
-
-function formatValue(value) {
-  if (Array.isArray(value)) return value.join(', ')
-  if (typeof value === 'boolean') return value ? 'Da' : 'Ne'
-  return String(value)
-}
-
-function ReportDetails({ loading, onEdit, report }) {
-  if (loading) {
-    return <div className="empty-state compact">Nalagam podrobnosti.</div>
-  }
-
-  if (!report) {
-    return <div className="empty-state compact">Izberi poročilo za podrobnosti.</div>
-  }
-
+function ReportDetails({ onEdit, report }) {
   const content = parseJson(report.vsebina_obrazca)
   const template = parseJson(report.struktura_obrazca)
-  const metadata = content?._meta
-  const fieldLabels = new Map(
-    (template?.polja || []).map((field) => [field.ime, field.oznaka]),
-  )
-  const contentEntries = content
-    ? Object.entries(content).filter(([key, value]) => (
-        key !== '_meta' && value !== null && value !== ''
-      ))
-    : []
+  const fields = Array.isArray(template.polja) ? template.polja : []
+  const metadata = content._meta
+  const contentFields = fields.filter((field) => (
+    content[field.ime] !== undefined
+    && content[field.ime] !== null
+    && content[field.ime] !== ''
+  ))
 
   return (
     <>
-      <div className="details-header">
-        <StatusBadge status={report.status} />
-        <h3>{report.naslov}</h3>
+      <header className="report-detail-header">
+        <div>
+          <div className="badge-row">
+            <StatusBadge status={report.status} />
+            <span className="soft-badge">{report.kategorija_naziv}</span>
+            <span className="soft-badge">{report.arhivirno_leto}</span>
+          </div>
+          <h2>{report.naslov}</h2>
+        </div>
         {onEdit && (
-          <button className="button secondary small" onClick={onEdit} type="button">
-            Uredi osnutek
+          <button className="button secondary" onClick={onEdit} type="button">
+            Nadaljuj osnutek
           </button>
         )}
-      </div>
+      </header>
 
-      <dl className="details-list">
+      <section className="report-meta-grid" aria-label="Podatki poročila">
         <div>
-          <dt>Kategorija</dt>
-          <dd>{report.kategorija_naziv}</dd>
+          <span>Avtor</span>
+          <strong>{report.avtor_ime} {report.avtor_priimek}</strong>
         </div>
         <div>
-          <dt>Arhivsko leto</dt>
-          <dd>{report.arhivirno_leto}</dd>
+          <span>Datum oddaje</span>
+          <strong>{formatDate(report.oddano_dne)}</strong>
         </div>
         <div>
-          <dt>Avtor</dt>
-          <dd>{report.avtor_ime} {report.avtor_priimek}</dd>
+          <span>Vod</span>
+          <strong>{report.ime_voda || 'Ni vezano na vod'}</strong>
         </div>
         <div>
-          <dt>Vod</dt>
-          <dd>{report.ime_voda || 'Ni vezan na vod'}</dd>
+          <span>Številka</span>
+          <strong>#{String(report.id).padStart(4, '0')}</strong>
         </div>
         {metadata?.vloge_nazivi?.length > 0 && (
-          <div>
-            <dt>Funkcije</dt>
-            <dd>{metadata.vloge_nazivi.join(', ')}</dd>
+          <div className="meta-wide">
+            <span>Funkcije</span>
+            <strong>{metadata.vloge_nazivi.join(', ')}</strong>
           </div>
         )}
-        <div>
-          <dt>Oddano</dt>
-          <dd>{formatDate(report.oddano_dne)}</dd>
-        </div>
-      </dl>
+      </section>
 
-      <div className="content-preview">
-        <h4>Vsebina</h4>
-        {contentEntries.length > 0 ? (
-          <dl className="content-fields">
-            {contentEntries.map(([key, value]) => (
-              <div key={key}>
-                <dt>{fieldLabels.get(key) || key}</dt>
-                <dd>{formatValue(value)}</dd>
+      <section className="report-body">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Vsebina dokumenta</p>
+            <h2>{template.naziv || 'Poročilo'}</h2>
+          </div>
+        </div>
+
+        {contentFields.length ? (
+          <dl className="report-content">
+            {contentFields.map((field) => (
+              <div key={field.ime}>
+                <dt>{field.oznaka}</dt>
+                <dd>{formatValue(content[field.ime])}</dd>
               </div>
             ))}
           </dl>
         ) : (
-          <p>Ni strukturirane vsebine.</p>
+          <div className="empty-state">Osnutek še nima vnesene vsebine.</div>
         )}
-      </div>
+      </section>
     </>
   )
 }

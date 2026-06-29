@@ -1,20 +1,41 @@
-function Sidebar() {
+function Sidebar({ activePage, onNavigate, onNewReport }) {
   return (
     <aside className="sidebar">
-      <div className="brand">
+      <button className="brand" onClick={() => onNavigate('dashboard')} type="button">
         <span className="brand-mark">TA</span>
-        <div>
-          <p className="eyebrow">Rod Puntarjev Tolmin</p>
-          <h1>Taborniški arhiv</h1>
-        </div>
-      </div>
+        <span>
+          <small>Rod Puntarjev Tolmin</small>
+          <strong>Taborniški arhiv</strong>
+        </span>
+      </button>
 
       <nav className="nav-list" aria-label="Glavna navigacija">
-        <a className="active" href="#arhiv">Arhiv</a>
-        <a href="#porocila">Poročila</a>
-        <a href="#uporabniki">Uporabniki</a>
-        <a href="#administracija">Administracija</a>
+        <button
+          className={activePage === 'dashboard' ? 'active' : ''}
+          onClick={() => onNavigate('dashboard')}
+          type="button"
+        >
+          Začetek
+        </button>
+        <button
+          className={activePage === 'archive' || activePage === 'report' ? 'active' : ''}
+          onClick={() => onNavigate('archive')}
+          type="button"
+        >
+          Arhiv
+        </button>
+        <button
+          className={activePage === 'wizard' ? 'active' : ''}
+          onClick={onNewReport}
+          type="button"
+        >
+          Novo poročilo
+        </button>
       </nav>
+
+      <p className="sidebar-note">
+        Interni arhiv poročil in dokumentacije rodu.
+      </p>
     </aside>
   )
 }

@@ -13,31 +13,30 @@ function groupReports(reports) {
   }, {})
 }
 
-function ArchiveTree({ loading, onSelectReport, reports, selectedReportId }) {
-  if (loading) {
-    return <div className="empty-state">Nalagam poročila.</div>
-  }
-
-  if (reports.length === 0) {
-    return <div className="empty-state">Ni poročil za izbrane filtre.</div>
+function ArchiveTree({ onOpenReport, reports }) {
+  if (!reports.length) {
+    return <div className="empty-state">V arhivu še ni poročil.</div>
   }
 
   const groupedReports = groupReports(reports)
   const sortedYears = Object.keys(groupedReports).sort((a, b) => Number(b) - Number(a))
 
   return (
-    <div className="archive-tree" aria-live="polite">
+    <div className="archive-tree">
       {sortedYears.map((year) => {
         const categoryGroups = groupedReports[year]
         const categories = Object.keys(categoryGroups).sort((a, b) => a.localeCompare(b, 'sl'))
-        const yearCount = categories.reduce((count, category) => count + categoryGroups[category].length, 0)
+        const yearCount = categories.reduce(
+          (count, category) => count + categoryGroups[category].length,
+          0,
+        )
 
         return (
           <details className="year-group" key={year}>
             <summary className="year-heading">
               <span className="toggle-icon" aria-hidden="true" />
-              <span>{year}</span>
-              <small>{yearCount} dokumentov</small>
+              <strong>{year}</strong>
+              <small>{yearCount} poročil</small>
             </summary>
 
             <div className="category-stack">
@@ -45,22 +44,24 @@ function ArchiveTree({ loading, onSelectReport, reports, selectedReportId }) {
                 <details className="category-group" key={`${year}-${category}`}>
                   <summary className="category-heading">
                     <span className="toggle-icon" aria-hidden="true" />
-                    <h4>{category}</h4>
+                    <strong>{category}</strong>
                     <span className="count-pill">{categoryGroups[category].length}</span>
                   </summary>
 
-                  <div className="report-stack">
+                  <div className="tree-report-list">
                     {categoryGroups[category].map((report) => (
                       <button
-                        className={`report-row ${selectedReportId === report.id ? 'selected' : ''}`}
+                        className="tree-report-row"
                         key={report.id}
+                        onClick={() => onOpenReport(report.id)}
                         type="button"
-                        onClick={() => onSelectReport(report.id)}
                       >
-                        <span className="report-title">{report.naslov}</span>
-                        <span className="report-meta">{report.avtor_ime} {report.avtor_priimek}</span>
-                        <span className="report-meta">{report.ime_voda || 'Splošni arhiv'}</span>
+                        <span>
+                          <strong>{report.naslov}</strong>
+                          <small>{report.avtor_ime} {report.avtor_priimek}</small>
+                        </span>
                         <StatusBadge status={report.status} />
+                        <span aria-hidden="true">→</span>
                       </button>
                     ))}
                   </div>
