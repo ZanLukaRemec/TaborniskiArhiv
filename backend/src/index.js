@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const cors = require('cors');
 const express = require('express');
+const path = require('path');
 const session = require('express-session');
 const archiveRoutes = require('./routes/archive');
 const auditRoutes = require('./routes/audit');
@@ -61,6 +62,20 @@ app.use('/api', archiveRoutes);
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Endpoint ne obstaja.' });
 });
+
+if (process.env.NODE_ENV === 'production') {
+  const frontendDirectory = path.join(__dirname, '../../frontend/dist');
+
+  app.use(express.static(frontendDirectory));
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || !req.accepts('html')) {
+      next();
+      return;
+    }
+
+    res.sendFile(path.join(frontendDirectory, 'index.html'));
+  });
+}
 
 app.listen(port, () => {
   console.log(`API posluša na http://localhost:${port}`);
