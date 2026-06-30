@@ -1,7 +1,7 @@
 import StatusBadge from './StatusBadge'
 import { formatDate, formatValue, parseJson } from '../reportUtils'
 
-function ReportDetails({ onEdit, report }) {
+function ReportDetails({ actions, onEdit, report }) {
   const content = parseJson(report.vsebina_obrazca)
   const template = parseJson(report.struktura_obrazca)
   const fields = Array.isArray(template.polja) ? template.polja : []
@@ -23,11 +23,14 @@ function ReportDetails({ onEdit, report }) {
           </div>
           <h2>{report.naslov}</h2>
         </div>
-        {onEdit && (
-          <button className="button secondary" onClick={onEdit} type="button">
-            Nadaljuj osnutek
-          </button>
-        )}
+        <div className="report-header-actions">
+          {onEdit && (
+            <button className="button secondary" onClick={onEdit} type="button">
+              Nadaljuj osnutek
+            </button>
+          )}
+          {actions}
+        </div>
       </header>
 
       <section className="report-meta-grid" aria-label="Podatki poročila">

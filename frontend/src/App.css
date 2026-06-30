@@ -256,6 +256,12 @@ h3 {
   color: var(--ink-soft);
 }
 
+.button.danger {
+  border-color: #a84d32;
+  background: var(--rose-100);
+  color: #7c321d;
+}
+
 .button.small {
   min-height: 32px;
   padding: 5px 10px;
@@ -782,6 +788,52 @@ textarea:focus {
   margin: 13px 0 0;
   font-size: 31px;
   line-height: 1.15;
+}
+
+.report-header-actions,
+.admin-report-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.report-header-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.admin-confirmation {
+  width: min(360px, 100%);
+  border: 1px solid #d1b56b;
+  border-radius: 6px;
+  background: var(--amber-100);
+  color: var(--amber-700);
+  padding: 12px;
+}
+
+.admin-confirmation.danger {
+  border-color: #c88670;
+  background: var(--rose-100);
+  color: #7c321d;
+}
+
+.admin-confirmation strong,
+.admin-confirmation p {
+  display: block;
+  margin: 0;
+}
+
+.admin-confirmation p {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.admin-confirmation > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-top: 10px;
 }
 
 .badge-row {
@@ -1405,6 +1457,98 @@ textarea:focus {
   font-size: 12px;
 }
 
+.audit-page > .page-heading {
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.audit-filter {
+  width: min(220px, 100%);
+  display: grid;
+  gap: 5px;
+}
+
+.audit-filter > span {
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.audit-list {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.audit-list-header,
+.audit-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.75fr) minmax(140px, 0.9fr) minmax(150px, 1fr) minmax(165px, 0.9fr);
+  align-items: center;
+  gap: 14px;
+  padding: 10px 13px;
+}
+
+.audit-list-header {
+  border-bottom: 1px solid var(--line);
+  background: var(--sage-100);
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.audit-row {
+  border-bottom: 1px solid #ddd3bd;
+  font-size: 12px;
+}
+
+.audit-row:last-child {
+  border-bottom: 0;
+}
+
+.audit-row > span:nth-child(2) {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.audit-row small,
+.audit-row time {
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+.audit-action {
+  justify-self: start;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--blue-100);
+  color: #355c6d;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 4px 8px;
+}
+
+.audit-action.reopen {
+  border-color: #d1b56b;
+  background: var(--amber-100);
+  color: var(--amber-700);
+}
+
+.audit-action.delete {
+  border-color: #c88670;
+  background: var(--rose-100);
+  color: #7c321d;
+}
+
+.audit-action.create {
+  border-color: #9bb299;
+  background: var(--sage-100);
+  color: var(--forest-800);
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -1427,7 +1571,7 @@ textarea:focus {
   }
 
   .nav-list {
-    grid-template-columns: repeat(auto-fit, minmax(75px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     margin-top: 14px;
   }
 
@@ -1475,6 +1619,18 @@ textarea:focus {
     grid-column: 3;
     grid-row: 2;
     justify-self: end;
+  }
+
+  .audit-list-header {
+    display: none;
+  }
+
+  .audit-row {
+    grid-template-columns: minmax(130px, 0.75fr) minmax(140px, 1fr) minmax(150px, 1fr);
+  }
+
+  .audit-row time {
+    grid-column: 2 / -1;
   }
 }
 
@@ -1535,6 +1691,22 @@ textarea:focus {
   .welcome-actions,
   .welcome-actions .button,
   .page-heading > .button {
+    width: 100%;
+  }
+
+  .report-header-actions,
+  .admin-report-actions,
+  .admin-report-actions .button {
+    width: 100%;
+  }
+
+  .report-header-actions,
+  .admin-report-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-confirmation {
     width: 100%;
   }
 
@@ -1658,5 +1830,28 @@ textarea:focus {
   .remove-field {
     grid-row: auto;
     justify-self: end;
+  }
+
+  .audit-page > .page-heading {
+    align-items: stretch;
+  }
+
+  .audit-filter {
+    width: 100%;
+  }
+
+  .audit-row {
+    grid-template-columns: 1fr auto;
+    gap: 6px 10px;
+    padding: 12px;
+  }
+
+  .audit-row > span:nth-child(2) {
+    justify-content: flex-end;
+  }
+
+  .audit-row > span:nth-child(3),
+  .audit-row time {
+    grid-column: 1 / -1;
   }
 }

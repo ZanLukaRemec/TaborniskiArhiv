@@ -53,6 +53,18 @@ export function submitReport(id) {
   })
 }
 
+export function reopenReport(id) {
+  return requestJson(`/api/porocila/${id}/vrni-v-osnutek`, {
+    method: 'POST',
+  })
+}
+
+export function deleteReport(id) {
+  return requestJson(`/api/porocila/${id}`, {
+    method: 'DELETE',
+  })
+}
+
 export function createReport(report) {
   return requestJson('/api/porocila', {
     method: 'POST',
@@ -75,6 +87,16 @@ export function createTemplate(template) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(template),
   })
+}
+
+export function getAuditLog(filters = {}) {
+  const params = new URLSearchParams()
+
+  if (filters.tabela) params.set('tabela', filters.tabela)
+  if (filters.limit) params.set('limit', filters.limit)
+
+  const query = params.toString()
+  return requestJson(`/api/dnevnik${query ? `?${query}` : ''}`)
 }
 
 export async function getCurrentUser() {

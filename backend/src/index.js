@@ -4,6 +4,7 @@ const cors = require('cors');
 const express = require('express');
 const session = require('express-session');
 const archiveRoutes = require('./routes/archive');
+const auditRoutes = require('./routes/audit');
 const authRoutes = require('./routes/auth');
 const templateRoutes = require('./routes/templates');
 const pool = require('./db');
@@ -52,6 +53,7 @@ app.get('/api/db-health', async (req, res) => {
 
 app.use('/api', authRoutes);
 app.use('/api', templateRoutes);
+app.use('/api', auditRoutes);
 app.use('/api', archiveRoutes);
 
 app.use('/api', (req, res) => {

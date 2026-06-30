@@ -1,5 +1,5 @@
 const express = require('express');
-const { requireAuth } = require('../auth');
+const { requireAuth, requireRole } = require('../auth');
 const pool = require('../db');
 
 const router = express.Router();
@@ -616,6 +616,109 @@ router.post('/porocila/:id/oddaja', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Poročila ni bilo mogoče oddati.' });
+  }
+});
+
+router.post(
+  '/porocila/:id/vrni-v-osnutek',
+  requireRole('administrator'),
+  async (req, res) => {
+    const reportId = Number(req.params.id);
+
+    if (!Number.isInteger(reportId)) {
+      res.status(400).json({ error: 'Neveljaven identifikator poročila.' });
+      return;
+    }
+
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      const [rows] = await connection.query(`
+        SELECT id, status
+        FROM porocilo
+        WHERE id = ?
+        LIMIT 1
+        FOR UPDATE
+      `, [reportId]);
+      const report = rows[0];
+
+      if (!report) {
+        await connection.rollback();
+        res.status(404).json({ error: 'Poročilo ne obstaja.' });
+        return;
+      }
+
+      if (report.status !== 'arhivirano') {
+        await connection.rollback();
+        res.status(409).json({ error: 'V osnutek je mogoče vrniti le arhivirano poročilo.' });
+        return;
+      }
+
+      await connection.query(`
+        UPDATE porocilo
+        SET status = 'osnutek', oddano_dne = NULL
+        WHERE id = ?
+      `, [reportId]);
+      await connection.query(`
+        INSERT INTO dnevnik_sprememb (akcija, tabela, zapis_id, avtor_id)
+        VALUES ('REOPEN', 'porocilo', ?, ?)
+      `, [reportId, req.session.user.id]);
+
+      await connection.commit();
+      res.json({ id: reportId, status: 'osnutek' });
+    } catch (error) {
+      await connection.rollback();
+      console.error(error);
+      res.status(500).json({ error: 'Poročila ni bilo mogoče vrniti v osnutek.' });
+    } finally {
+      connection.release();
+    }
+  },
+);
+
+router.delete('/porocila/:id', requireRole('administrator'), async (req, res) => {
+  const reportId = Number(req.params.id);
+
+  if (!Number.isInteger(reportId)) {
+    res.status(400).json({ error: 'Neveljaven identifikator poročila.' });
+    return;
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query(`
+      SELECT id
+      FROM porocilo
+      WHERE id = ?
+      LIMIT 1
+      FOR UPDATE
+    `, [reportId]);
+
+    if (!rows.length) {
+      await connection.rollback();
+      res.status(404).json({ error: 'Poročilo ne obstaja.' });
+      return;
+    }
+
+    await connection.query(`
+      INSERT INTO dnevnik_sprememb (akcija, tabela, zapis_id, avtor_id)
+      VALUES ('DELETE', 'porocilo', ?, ?)
+    `, [reportId, req.session.user.id]);
+    await connection.query('DELETE FROM porocilo WHERE id = ?', [reportId]);
+
+    await connection.commit();
+    res.status(204).end();
+  } catch (error) {
+    await connection.rollback();
+    console.error(error);
+    res.status(500).json({ error: 'Poročila ni bilo mogoče izbrisati.' });
+  } finally {
+    connection.release();
   }
 });
 

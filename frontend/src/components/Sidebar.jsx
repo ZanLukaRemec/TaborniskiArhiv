@@ -32,13 +32,22 @@ function Sidebar({ activePage, isAdministrator, onNavigate, onNewReport }) {
           Novo poročilo
         </button>
         {isAdministrator && (
-          <button
-            className={activePage === 'templates' ? 'active' : ''}
-            onClick={() => onNavigate('templates')}
-            type="button"
-          >
-            Predloge
-          </button>
+          <>
+            <button
+              className={activePage === 'templates' ? 'active' : ''}
+              onClick={() => onNavigate('templates')}
+              type="button"
+            >
+              Predloge
+            </button>
+            <button
+              className={activePage === 'audit' ? 'active' : ''}
+              onClick={() => onNavigate('audit')}
+              type="button"
+            >
+              Dnevnik
+            </button>
+          </>
         )}
       </nav>
 

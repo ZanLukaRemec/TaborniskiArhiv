@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getCurrentUser, login, logout } from './api'
 import AppShell from './components/AppShell'
+import AuditLogPage from './components/AuditLogPage'
 import ArchivePage from './components/ArchivePage'
 import DashboardPage from './components/DashboardPage'
 import LoginPage from './components/LoginPage'
@@ -15,6 +16,7 @@ const PAGE_TITLES = {
   report: 'Poročilo',
   wizard: 'Novo poročilo',
   templates: 'Predloge poročil',
+  audit: 'Revizijski dnevnik',
 }
 
 function App() {
@@ -56,6 +58,12 @@ function App() {
     setWizardReportId(id)
     setNotification('')
     setPage('wizard')
+    window.scrollTo(0, 0)
+  }
+
+  function openArchive(message = '') {
+    setNotification(message)
+    setPage('archive')
     window.scrollTo(0, 0)
   }
 
@@ -119,6 +127,7 @@ function App() {
       {page === 'report' && reportId && (
         <ReportPage
           onBack={() => navigate('archive')}
+          onDeleted={openArchive}
           onEdit={(id) => openWizard(id)}
           reportId={reportId}
           user={user}
@@ -137,6 +146,10 @@ function App() {
 
       {page === 'templates' && user.vloge.includes('administrator') && (
         <TemplatesPage />
+      )}
+
+      {page === 'audit' && user.vloge.includes('administrator') && (
+        <AuditLogPage />
       )}
     </AppShell>
   )
