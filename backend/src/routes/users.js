@@ -79,7 +79,11 @@ router.post('/uporabniki', async (req, res) => {
   const email = String(req.body.e_posta || '').trim().toLowerCase();
   const password = String(req.body.geslo || '');
   const birthDate = req.body.datum_rojstva ? String(req.body.datum_rojstva) : null;
-  const groupId = req.body.vod_id ? Number(req.body.vod_id) : null;
+  const groupId = req.body.vod_id === null
+    || req.body.vod_id === undefined
+    || req.body.vod_id === ''
+    ? null
+    : Number(req.body.vod_id);
   const today = new Date().toISOString().slice(0, 10);
 
   if (firstName.length < 2 || firstName.length > 100) {
@@ -189,6 +193,148 @@ router.post('/uporabniki', async (req, res) => {
 
     console.error(error);
     res.status(500).json({ error: 'Uporabniškega računa ni bilo mogoče ustvariti.' });
+  } finally {
+    connection.release();
+  }
+});
+
+router.put('/uporabniki/:id', async (req, res) => {
+  const userId = Number(req.params.id);
+  const firstName = String(req.body.ime || '').trim();
+  const lastName = String(req.body.priimek || '').trim();
+  const username = String(req.body.uporabnisko_ime || '').trim().toLowerCase();
+  const email = String(req.body.e_posta || '').trim().toLowerCase();
+  const birthDate = req.body.datum_rojstva ? String(req.body.datum_rojstva) : null;
+  const groupId = req.body.vod_id === null
+    || req.body.vod_id === undefined
+    || req.body.vod_id === ''
+    ? null
+    : Number(req.body.vod_id);
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (!Number.isInteger(userId)) {
+    res.status(400).json({ error: 'Uporabnik ni veljaven.' });
+    return;
+  }
+
+  if (firstName.length < 2 || firstName.length > 100) {
+    res.status(400).json({ error: 'Ime mora vsebovati od 2 do 100 znakov.' });
+    return;
+  }
+
+  if (lastName.length < 2 || lastName.length > 100) {
+    res.status(400).json({ error: 'Priimek mora vsebovati od 2 do 100 znakov.' });
+    return;
+  }
+
+  if (
+    username.length < 3
+    || username.length > 50
+    || !USERNAME_PATTERN.test(username)
+  ) {
+    res.status(400).json({
+      error: 'Uporabniško ime naj vsebuje od 3 do 50 malih črk, številk ali znakov . _ -.',
+    });
+    return;
+  }
+
+  if (email.length > 150 || !EMAIL_PATTERN.test(email)) {
+    res.status(400).json({ error: 'Vnesi veljaven e-poštni naslov.' });
+    return;
+  }
+
+  if (birthDate && (!isValidDate(birthDate) || birthDate > today)) {
+    res.status(400).json({ error: 'Datum rojstva ni veljaven.' });
+    return;
+  }
+
+  if (groupId !== null && !Number.isInteger(groupId)) {
+    res.status(400).json({ error: 'Izbrani vod ni veljaven.' });
+    return;
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [users] = await connection.query(
+      'SELECT id FROM clan WHERE id = ? LIMIT 1 FOR UPDATE',
+      [userId],
+    );
+
+    if (!users.length) {
+      await connection.rollback();
+      res.status(404).json({ error: 'Uporabnik ne obstaja.' });
+      return;
+    }
+
+    if (groupId !== null) {
+      const [groups] = await connection.query(
+        'SELECT id FROM vod WHERE id = ? LIMIT 1',
+        [groupId],
+      );
+
+      if (!groups.length) {
+        await connection.rollback();
+        res.status(404).json({ error: 'Izbrani vod ne obstaja.' });
+        return;
+      }
+    }
+
+    await connection.query(`
+      UPDATE clan
+      SET
+        ime = ?,
+        priimek = ?,
+        uporabnisko_ime = ?,
+        e_posta = ?,
+        datum_rojstva = ?,
+        vod_id = ?
+      WHERE id = ?
+    `, [
+      firstName,
+      lastName,
+      username,
+      email,
+      birthDate,
+      groupId,
+      userId,
+    ]);
+    await connection.query(`
+      INSERT INTO dnevnik_sprememb (akcija, tabela, zapis_id, avtor_id)
+      VALUES ('UPDATE', 'clan', ?, ?)
+    `, [userId, req.session.user.id]);
+
+    await connection.commit();
+
+    let sessionUser = null;
+
+    if (userId === req.session.user.id) {
+      sessionUser = {
+        ...req.session.user,
+        ime: firstName,
+        priimek: lastName,
+        uporabnisko_ime: username,
+        e_posta: email,
+      };
+      req.session.user = sessionUser;
+    }
+
+    res.json({
+      id: userId,
+      user: sessionUser,
+    });
+  } catch (error) {
+    await connection.rollback();
+
+    if (error.code === 'ER_DUP_ENTRY') {
+      res.status(409).json({ error: 'Uporabniško ime ali e-pošta že obstaja.' });
+      return;
+    }
+
+    console.error(error);
+    res.status(500).json({ error: 'Podatkov uporabnika ni bilo mogoče posodobiti.' });
   } finally {
     connection.release();
   }

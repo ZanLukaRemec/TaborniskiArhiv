@@ -111,6 +111,14 @@ export function createUser(user) {
   })
 }
 
+export function updateUser(userId, user) {
+  return requestJson(`/api/uporabniki/${userId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(user),
+  })
+}
+
 export function assignUserRole(userId, assignment) {
   return requestJson(`/api/uporabniki/${userId}/vloge`, {
     method: 'POST',

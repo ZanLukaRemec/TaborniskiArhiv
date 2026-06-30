@@ -155,7 +155,10 @@ function App() {
       )}
 
       {page === 'users' && user.vloge.includes('administrator') && (
-        <UsersPage currentUser={user} />
+        <UsersPage
+          currentUser={user}
+          onCurrentUserUpdated={setUser}
+        />
       )}
     </AppShell>
   )

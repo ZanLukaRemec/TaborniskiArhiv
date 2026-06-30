@@ -1692,6 +1692,7 @@ textarea:focus {
 }
 
 .user-create-form label,
+.user-edit-form label,
 .role-assignment-form label,
 .role-revoke-confirmation label {
   display: grid;
@@ -1705,9 +1706,21 @@ textarea:focus {
 .user-detail-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
   border-bottom: 1px solid var(--line);
   padding-bottom: 20px;
+}
+
+.user-detail-identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.user-detail-identity > div:last-child {
+  min-width: 0;
 }
 
 .user-detail-header h2 {
@@ -1726,6 +1739,23 @@ textarea:focus {
   height: 54px;
   flex: 0 0 54px;
   border-radius: 50%;
+}
+
+.user-edit-form {
+  margin-top: 18px;
+  border: 1px solid #d1b56b;
+  border-radius: 6px;
+  background: var(--amber-100);
+  padding: 14px;
+}
+
+.profile-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+  border-top: 1px solid #d1b56b;
+  padding-top: 12px;
 }
 
 .user-meta {
@@ -2223,6 +2253,15 @@ textarea:focus {
 
   .user-detail-header {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .user-detail-identity {
+    align-items: flex-start;
+  }
+
+  .user-detail-header > .button {
+    width: 100%;
   }
 
   .user-meta {
@@ -2246,5 +2285,14 @@ textarea:focus {
 
   .role-revoke-confirmation > div:last-child .button {
     flex: 1;
+  }
+
+  .profile-edit-actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .profile-edit-actions .button {
+    width: 100%;
   }
 }

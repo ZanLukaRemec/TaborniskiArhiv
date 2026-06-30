@@ -4,6 +4,7 @@ import {
   createUser,
   getUsers,
   revokeUserRole,
+  updateUser,
 } from '../api'
 
 function today() {
@@ -37,12 +38,25 @@ function emptyUserForm() {
   }
 }
 
-function UsersPage({ currentUser }) {
+function editFormFromUser(user) {
+  return {
+    ime: user.ime,
+    priimek: user.priimek,
+    uporabnisko_ime: user.uporabnisko_ime,
+    e_posta: user.e_posta,
+    datum_rojstva: user.datum_rojstva || '',
+    vod_id: user.vod_id || '',
+  }
+}
+
+function UsersPage({ currentUser, onCurrentUserUpdated }) {
   const [data, setData] = useState({ uporabniki: [], vloge: [], vodi: [] })
   const [selectedUserId, setSelectedUserId] = useState(null)
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)
   const [userForm, setUserForm] = useState(emptyUserForm())
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState(null)
   const [roleFormOpen, setRoleFormOpen] = useState(false)
   const [roleForm, setRoleForm] = useState({
     vloga_id: '',
@@ -101,6 +115,8 @@ function UsersPage({ currentUser }) {
   function selectUser(userId) {
     setSelectedUserId(userId)
     setCreating(false)
+    setEditing(false)
+    setEditForm(null)
     setRoleFormOpen(false)
     setRevokeAssignment(null)
     setError('')
@@ -110,6 +126,47 @@ function UsersPage({ currentUser }) {
   function updateUserForm(event) {
     const { name, value } = event.target
     setUserForm((current) => ({ ...current, [name]: value }))
+  }
+
+  function updateEditForm(event) {
+    const { name, value } = event.target
+    setEditForm((current) => ({ ...current, [name]: value }))
+  }
+
+  function openEditUser() {
+    setEditForm(editFormFromUser(selectedUser))
+    setEditing(true)
+    setRoleFormOpen(false)
+    setRevokeAssignment(null)
+    setError('')
+    setNotification('')
+  }
+
+  async function handleUpdateUser(event) {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
+
+    try {
+      const updated = await updateUser(selectedUser.id, {
+        ...editForm,
+        vod_id: editForm.vod_id ? Number(editForm.vod_id) : null,
+        datum_rojstva: editForm.datum_rojstva || null,
+      })
+      await loadData(selectedUser.id)
+
+      if (updated.user) {
+        onCurrentUserUpdated(updated.user)
+      }
+
+      setEditing(false)
+      setEditForm(null)
+      setNotification('Podatki uporabnika so posodobljeni.')
+    } catch (saveError) {
+      setError(saveError.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleCreateUser(event) {
@@ -198,13 +255,15 @@ function UsersPage({ currentUser }) {
         <div>
           <p className="eyebrow">Administracija</p>
           <h2>Uporabniki in vloge</h2>
-          <p>Ustvari račune in upravljaj obdobja njihovih odgovornosti.</p>
+          <p>Ustvari in urejaj račune ter obdobja njihovih odgovornosti.</p>
         </div>
         <button
           className="button primary"
           onClick={() => {
             setUserForm(emptyUserForm())
             setCreating(true)
+            setEditing(false)
+            setEditForm(null)
             setError('')
             setNotification('')
           }}
@@ -349,177 +408,274 @@ function UsersPage({ currentUser }) {
           ) : selectedUser ? (
             <>
               <header className="user-detail-header">
-                <div className="user-detail-avatar">
-                  {selectedUser.ime[0]}{selectedUser.priimek[0]}
-                </div>
-                <div>
-                  <p className="eyebrow">Uporabniški račun</p>
-                  <h2>{selectedUser.ime} {selectedUser.priimek}</h2>
-                  <p>@{selectedUser.uporabnisko_ime} · {selectedUser.e_posta}</p>
-                </div>
-              </header>
-
-              <dl className="user-meta">
-                <div>
-                  <dt>Vod</dt>
-                  <dd>{selectedUser.ime_voda || 'Ni dodeljen vodu'}</dd>
-                </div>
-                <div>
-                  <dt>Datum rojstva</dt>
-                  <dd>{selectedUser.datum_rojstva ? formatDate(selectedUser.datum_rojstva) : 'Ni podatka'}</dd>
-                </div>
-              </dl>
-
-              <section className="user-roles-section">
-                <div className="field-editor-heading">
-                  <div>
-                    <p className="eyebrow">Trenutne odgovornosti</p>
-                    <h3>Vloge</h3>
+                <div className="user-detail-identity">
+                  <div className="user-detail-avatar">
+                    {selectedUser.ime[0]}{selectedUser.priimek[0]}
                   </div>
+                  <div>
+                    <p className="eyebrow">Uporabniški račun</p>
+                    <h2>{selectedUser.ime} {selectedUser.priimek}</h2>
+                    <p>@{selectedUser.uporabnisko_ime} · {selectedUser.e_posta}</p>
+                  </div>
+                </div>
+                {!editing && (
                   <button
-                    className="button secondary small"
-                    onClick={() => {
-                      setRoleFormOpen((current) => !current)
-                      setRevokeAssignment(null)
-                    }}
+                    className="button ghost small"
+                    onClick={openEditUser}
                     type="button"
                   >
-                    Dodeli vlogo
+                    Uredi podatke
                   </button>
-                </div>
-
-                {currentAssignments.length ? (
-                  <div className="current-role-chips">
-                    {currentAssignments.map((assignment) => (
-                      <span key={assignment.id}>{assignment.naziv}</span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="muted">Uporabnik trenutno nima aktivne vloge.</p>
                 )}
+              </header>
 
-                {roleFormOpen && (
-                  <form className="role-assignment-form" onSubmit={handleAssignRole}>
+              {editing ? (
+                <form className="user-edit-form" onSubmit={handleUpdateUser}>
+                  <div className="user-form-grid">
                     <label>
-                      <span>Vloga</span>
-                      <select
-                        onChange={(event) => setRoleForm((current) => ({
-                          ...current,
-                          vloga_id: event.target.value,
-                        }))}
+                      <span>Ime</span>
+                      <input
+                        name="ime"
+                        onChange={updateEditForm}
                         required
-                        value={roleForm.vloga_id}
+                        value={editForm.ime}
+                      />
+                    </label>
+                    <label>
+                      <span>Priimek</span>
+                      <input
+                        name="priimek"
+                        onChange={updateEditForm}
+                        required
+                        value={editForm.priimek}
+                      />
+                    </label>
+                    <label>
+                      <span>Uporabniško ime</span>
+                      <input
+                        autoComplete="off"
+                        name="uporabnisko_ime"
+                        onChange={updateEditForm}
+                        required
+                        value={editForm.uporabnisko_ime}
+                      />
+                    </label>
+                    <label>
+                      <span>E-pošta</span>
+                      <input
+                        name="e_posta"
+                        onChange={updateEditForm}
+                        required
+                        type="email"
+                        value={editForm.e_posta}
+                      />
+                    </label>
+                    <label>
+                      <span>Datum rojstva</span>
+                      <input
+                        max={today()}
+                        name="datum_rojstva"
+                        onChange={updateEditForm}
+                        type="date"
+                        value={editForm.datum_rojstva}
+                      />
+                    </label>
+                    <label>
+                      <span>Vod</span>
+                      <select
+                        name="vod_id"
+                        onChange={updateEditForm}
+                        value={editForm.vod_id}
                       >
-                        <option value="">Izberi vlogo</option>
-                        {data.vloge.map((role) => (
-                          <option key={role.id} value={role.id}>{role.naziv}</option>
+                        <option value="">Ni dodeljen vodu</option>
+                        {data.vodi.map((group) => (
+                          <option key={group.id} value={group.id}>{group.ime_voda}</option>
                         ))}
                       </select>
                     </label>
-                    <label>
-                      <span>Velja od</span>
-                      <input
-                        onChange={(event) => setRoleForm((current) => ({
-                          ...current,
-                          dodeljena_dne: event.target.value,
-                        }))}
-                        required
-                        type="date"
-                        value={roleForm.dodeljena_dne}
-                      />
-                    </label>
-                    <label>
-                      <span>Velja do</span>
-                      <input
-                        min={roleForm.dodeljena_dne}
-                        onChange={(event) => setRoleForm((current) => ({
-                          ...current,
-                          odvzeta_dne: event.target.value,
-                        }))}
-                        type="date"
-                        value={roleForm.odvzeta_dne}
-                      />
-                    </label>
-                    <button className="button primary small" disabled={saving} type="submit">
-                      Shrani dodelitev
+                  </div>
+                  <div className="profile-edit-actions">
+                    <button
+                      className="button ghost small"
+                      onClick={() => {
+                        setEditing(false)
+                        setEditForm(null)
+                        setError('')
+                      }}
+                      type="button"
+                    >
+                      Prekliči
                     </button>
-                  </form>
-                )}
+                    <button className="button primary small" disabled={saving} type="submit">
+                      {saving ? 'Shranjujem ...' : 'Shrani podatke'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <dl className="user-meta">
+                  <div>
+                    <dt>Vod</dt>
+                    <dd>{selectedUser.ime_voda || 'Ni dodeljen vodu'}</dd>
+                  </div>
+                  <div>
+                    <dt>Datum rojstva</dt>
+                    <dd>{selectedUser.datum_rojstva ? formatDate(selectedUser.datum_rojstva) : 'Ni podatka'}</dd>
+                  </div>
+                </dl>
+              )}
 
-                <div className="role-history">
-                  {selectedUser.dodelitve.map((assignment) => {
-                    const status = assignmentStatus(assignment)
-                    const isOwnActiveAdmin = selectedUser.id === currentUser.id
-                      && assignment.naziv === 'administrator'
-                      && status === 'active'
+              {!editing && (
+                <section className="user-roles-section">
+                  <div className="field-editor-heading">
+                    <div>
+                      <p className="eyebrow">Trenutne odgovornosti</p>
+                      <h3>Vloge</h3>
+                    </div>
+                    <button
+                      className="button secondary small"
+                      onClick={() => {
+                        setRoleFormOpen((current) => !current)
+                        setRevokeAssignment(null)
+                      }}
+                      type="button"
+                    >
+                      Dodeli vlogo
+                    </button>
+                  </div>
 
-                    return (
-                      <div className="role-history-row" key={assignment.id}>
-                        <span>
-                          <strong>{assignment.naziv}</strong>
-                          <small>
-                            {formatDate(assignment.dodeljena_dne)}
-                            {' – '}
-                            {formatDate(assignment.odvzeta_dne)}
-                          </small>
-                        </span>
-                        <span className={`role-state ${status}`}>
-                          {status === 'active' ? 'Aktivna' : status === 'future' ? 'Prihodnja' : 'Končana'}
-                        </span>
-                        {!assignment.odvzeta_dne && !isOwnActiveAdmin && (
-                          <button
-                            className="text-button danger-text"
-                            onClick={() => openRevoke(assignment)}
-                            type="button"
-                          >
-                            Zaključi
-                          </button>
-                        )}
+                  {currentAssignments.length ? (
+                    <div className="current-role-chips">
+                      {currentAssignments.map((assignment) => (
+                        <span key={assignment.id}>{assignment.naziv}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="muted">Uporabnik trenutno nima aktivne vloge.</p>
+                  )}
+
+                  {roleFormOpen && (
+                    <form className="role-assignment-form" onSubmit={handleAssignRole}>
+                      <label>
+                        <span>Vloga</span>
+                        <select
+                          onChange={(event) => setRoleForm((current) => ({
+                            ...current,
+                            vloga_id: event.target.value,
+                          }))}
+                          required
+                          value={roleForm.vloga_id}
+                        >
+                          <option value="">Izberi vlogo</option>
+                          {data.vloge.map((role) => (
+                            <option key={role.id} value={role.id}>{role.naziv}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>Velja od</span>
+                        <input
+                          onChange={(event) => setRoleForm((current) => ({
+                            ...current,
+                            dodeljena_dne: event.target.value,
+                          }))}
+                          required
+                          type="date"
+                          value={roleForm.dodeljena_dne}
+                        />
+                      </label>
+                      <label>
+                        <span>Velja do</span>
+                        <input
+                          min={roleForm.dodeljena_dne}
+                          onChange={(event) => setRoleForm((current) => ({
+                            ...current,
+                            odvzeta_dne: event.target.value,
+                          }))}
+                          type="date"
+                          value={roleForm.odvzeta_dne}
+                        />
+                      </label>
+                      <button className="button primary small" disabled={saving} type="submit">
+                        Shrani dodelitev
+                      </button>
+                    </form>
+                  )}
+
+                  <div className="role-history">
+                    {selectedUser.dodelitve.map((assignment) => {
+                      const status = assignmentStatus(assignment)
+                      const isOwnActiveAdmin = selectedUser.id === currentUser.id
+                        && assignment.naziv === 'administrator'
+                        && status === 'active'
+
+                      return (
+                        <div className="role-history-row" key={assignment.id}>
+                          <span>
+                            <strong>{assignment.naziv}</strong>
+                            <small>
+                              {formatDate(assignment.dodeljena_dne)}
+                              {' – '}
+                              {formatDate(assignment.odvzeta_dne)}
+                            </small>
+                          </span>
+                          <span className={`role-state ${status}`}>
+                            {status === 'active' ? 'Aktivna' : status === 'future' ? 'Prihodnja' : 'Končana'}
+                          </span>
+                          {!assignment.odvzeta_dne && !isOwnActiveAdmin && (
+                            <button
+                              className="text-button danger-text"
+                              onClick={() => openRevoke(assignment)}
+                              type="button"
+                            >
+                              Zaključi
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                    {!selectedUser.dodelitve.length && (
+                      <div className="role-history-empty">
+                        Za tega uporabnika še ni zabeleženih vlog.
                       </div>
-                    )
-                  })}
-                  {!selectedUser.dodelitve.length && (
-                    <div className="role-history-empty">
-                      Za tega uporabnika še ni zabeleženih vlog.
+                    )}
+                  </div>
+
+                  {revokeAssignment && (
+                    <div className="role-revoke-confirmation" role="alertdialog" aria-label="Potrdi zaključek vloge">
+                      <div>
+                        <strong>Zaključi vlogo »{revokeAssignment.naziv}«?</strong>
+                        <p>Po izbranem datumu uporabnik te vloge ne bo več imel.</p>
+                      </div>
+                      <label>
+                        <span>Datum zaključka</span>
+                        <input
+                          min={revokeAssignment.dodeljena_dne}
+                          onChange={(event) => setRevokeDate(event.target.value)}
+                          type="date"
+                          value={revokeDate}
+                        />
+                      </label>
+                      <div>
+                        <button
+                          className="button ghost small"
+                          onClick={() => setRevokeAssignment(null)}
+                          type="button"
+                        >
+                          Prekliči
+                        </button>
+                        <button
+                          className="button danger small"
+                          disabled={saving}
+                          onClick={handleRevoke}
+                          type="button"
+                        >
+                          Zaključi vlogo
+                        </button>
+                      </div>
                     </div>
                   )}
-                </div>
-
-                {revokeAssignment && (
-                  <div className="role-revoke-confirmation" role="alertdialog" aria-label="Potrdi zaključek vloge">
-                    <div>
-                      <strong>Zaključi vlogo »{revokeAssignment.naziv}«?</strong>
-                      <p>Po izbranem datumu uporabnik te vloge ne bo več imel.</p>
-                    </div>
-                    <label>
-                      <span>Datum zaključka</span>
-                      <input
-                        min={revokeAssignment.dodeljena_dne}
-                        onChange={(event) => setRevokeDate(event.target.value)}
-                        type="date"
-                        value={revokeDate}
-                      />
-                    </label>
-                    <div>
-                      <button
-                        className="button ghost small"
-                        onClick={() => setRevokeAssignment(null)}
-                        type="button"
-                      >
-                        Prekliči
-                      </button>
-                      <button
-                        className="button danger small"
-                        disabled={saving}
-                        onClick={handleRevoke}
-                        type="button"
-                      >
-                        Zaključi vlogo
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </section>
+                </section>
+              )}
             </>
           ) : (
             <div className="empty-state">Izberi uporabnika.</div>
