@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/index.js",
   "scripts": {
-    "check": "node --check src/index.js && node --check src/db.js && node --check src/auth.js && node --check src/routes/archive.js && node --check src/routes/auth.js && node --check src/routes/templates.js && node --check src/routes/audit.js && node --check src/routes/users.js",
+    "check": "node --check src/index.js && node --check src/db.js && node --check src/auth.js && node --check src/passwords.js && node --check src/routes/archive.js && node --check src/routes/auth.js && node --check src/routes/templates.js && node --check src/routes/audit.js && node --check src/routes/users.js",
     "test": "npm run check",
     "dev": "nodemon src/index.js",
     "start": "node src/index.js"
@@ -13,7 +13,7 @@
   "license": "ISC",
   "description": "Express API za taborniški arhiv.",
   "dependencies": {
-    "argon2": "^0.44.0",
+    "@node-rs/argon2": "2.0.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

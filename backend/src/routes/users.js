@@ -1,7 +1,7 @@
-const argon2 = require('argon2');
 const express = require('express');
 const { requireRole } = require('../auth');
 const pool = require('../db');
+const { hashPassword } = require('../passwords');
 
 const router = express.Router();
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -130,7 +130,7 @@ router.post('/uporabniki', async (req, res) => {
   let passwordHash;
 
   try {
-    passwordHash = await argon2.hash(password);
+    passwordHash = await hashPassword(password);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Gesla ni bilo mogoče varno pripraviti.' });
@@ -364,7 +364,7 @@ router.post('/uporabniki/:id/ponastavi-geslo', async (req, res) => {
   let passwordHash;
 
   try {
-    passwordHash = await argon2.hash(password);
+    passwordHash = await hashPassword(password);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Gesla ni bilo mogoče varno pripraviti.' });

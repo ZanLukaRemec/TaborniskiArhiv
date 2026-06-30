@@ -1,7 +1,7 @@
-const argon2 = require('argon2');
 const express = require('express');
 const { requireAuth } = require('../auth');
 const pool = require('../db');
+const { hashPassword, verifyPassword } = require('../passwords');
 
 const router = express.Router();
 
@@ -27,7 +27,7 @@ router.post('/auth/prijava', async (req, res) => {
 
     if (member) {
       try {
-        passwordMatches = await argon2.verify(member.geslo_hash, geslo);
+        passwordMatches = await verifyPassword(member.geslo_hash, geslo);
       } catch {
         passwordMatches = false;
       }
@@ -106,7 +106,7 @@ router.post('/auth/geslo', requireAuth, async (req, res) => {
     let passwordMatches = false;
 
     try {
-      passwordMatches = await argon2.verify(member.geslo_hash, currentPassword);
+      passwordMatches = await verifyPassword(member.geslo_hash, currentPassword);
     } catch {
       passwordMatches = false;
     }
@@ -123,7 +123,7 @@ router.post('/auth/geslo', requireAuth, async (req, res) => {
       return;
     }
 
-    const passwordHash = await argon2.hash(newPassword);
+    const passwordHash = await hashPassword(newPassword);
 
     await connection.query(
       'UPDATE clan SET geslo_hash = ? WHERE id = ?',
