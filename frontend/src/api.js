@@ -99,6 +99,34 @@ export function getAuditLog(filters = {}) {
   return requestJson(`/api/dnevnik${query ? `?${query}` : ''}`)
 }
 
+export function getUsers() {
+  return requestJson('/api/uporabniki')
+}
+
+export function createUser(user) {
+  return requestJson('/api/uporabniki', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(user),
+  })
+}
+
+export function assignUserRole(userId, assignment) {
+  return requestJson(`/api/uporabniki/${userId}/vloge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(assignment),
+  })
+}
+
+export function revokeUserRole(userId, assignmentId, validTo) {
+  return requestJson(`/api/uporabniki/${userId}/vloge/${assignmentId}/odvzemi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ odvzeta_dne: validTo }),
+  })
+}
+
 export async function getCurrentUser() {
   const data = await requestJson('/api/auth/me')
   return data.user

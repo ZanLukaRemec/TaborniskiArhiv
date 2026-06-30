@@ -6,11 +6,15 @@ const ACTION_LABELS = {
   UPDATE: 'Posodobljeno',
   REOPEN: 'Vrnjeno v osnutek',
   DELETE: 'Izbrisano',
+  ASSIGN: 'Vloga dodeljena',
+  REVOKE: 'Vloga zaključena',
 }
 
 const TABLE_LABELS = {
   porocilo: 'Poročilo',
   predloga_obrazca: 'Predloga',
+  clan: 'Uporabnik',
+  dodelitev_vloge: 'Dodelitev vloge',
 }
 
 function formatAuditDate(value) {
@@ -56,7 +60,7 @@ function AuditLogPage() {
         <div>
           <p className="eyebrow">Administracija</p>
           <h2>Revizijski dnevnik</h2>
-          <p>Pregled ključnih sprememb poročil in predlog.</p>
+          <p>Pregled ključnih sprememb poročil, predlog, uporabnikov in vlog.</p>
         </div>
         <label className="audit-filter">
           <span>Prikaži</span>
@@ -64,6 +68,8 @@ function AuditLogPage() {
             <option value="">Vse spremembe</option>
             <option value="porocilo">Poročila</option>
             <option value="predloga_obrazca">Predloge</option>
+            <option value="clan">Uporabniki</option>
+            <option value="dodelitev_vloge">Dodelitve vlog</option>
           </select>
         </label>
       </header>

@@ -8,6 +8,7 @@ import LoginPage from './components/LoginPage'
 import ReportPage from './components/ReportPage'
 import ReportWizard from './components/ReportWizard'
 import TemplatesPage from './components/TemplatesPage'
+import UsersPage from './components/UsersPage'
 import './App.css'
 
 const PAGE_TITLES = {
@@ -17,6 +18,7 @@ const PAGE_TITLES = {
   wizard: 'Novo poročilo',
   templates: 'Predloge poročil',
   audit: 'Revizijski dnevnik',
+  users: 'Uporabniki in vloge',
 }
 
 function App() {
@@ -150,6 +152,10 @@ function App() {
 
       {page === 'audit' && user.vloge.includes('administrator') && (
         <AuditLogPage />
+      )}
+
+      {page === 'users' && user.vloge.includes('administrator') && (
+        <UsersPage currentUser={user} />
       )}
     </AppShell>
   )

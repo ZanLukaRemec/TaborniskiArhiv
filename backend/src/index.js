@@ -7,6 +7,7 @@ const archiveRoutes = require('./routes/archive');
 const auditRoutes = require('./routes/audit');
 const authRoutes = require('./routes/auth');
 const templateRoutes = require('./routes/templates');
+const userRoutes = require('./routes/users');
 const pool = require('./db');
 
 const app = express();
@@ -52,6 +53,7 @@ app.get('/api/db-health', async (req, res) => {
 });
 
 app.use('/api', authRoutes);
+app.use('/api', userRoutes);
 app.use('/api', templateRoutes);
 app.use('/api', auditRoutes);
 app.use('/api', archiveRoutes);

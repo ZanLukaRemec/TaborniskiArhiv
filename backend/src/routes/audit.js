@@ -3,7 +3,12 @@ const { requireRole } = require('../auth');
 const pool = require('../db');
 
 const router = express.Router();
-const AUDIT_TABLES = new Set(['porocilo', 'predloga_obrazca']);
+const AUDIT_TABLES = new Set([
+  'porocilo',
+  'predloga_obrazca',
+  'clan',
+  'dodelitev_vloge',
+]);
 
 router.use(requireRole('administrator'));
 

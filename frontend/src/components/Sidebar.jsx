@@ -34,6 +34,13 @@ function Sidebar({ activePage, isAdministrator, onNavigate, onNewReport }) {
         {isAdministrator && (
           <>
             <button
+              className={activePage === 'users' ? 'active' : ''}
+              onClick={() => onNavigate('users')}
+              type="button"
+            >
+              Uporabniki
+            </button>
+            <button
               className={activePage === 'templates' ? 'active' : ''}
               onClick={() => onNavigate('templates')}
               type="button"
