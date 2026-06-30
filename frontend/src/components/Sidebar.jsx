@@ -31,6 +31,13 @@ function Sidebar({ activePage, isAdministrator, onNavigate, onNewReport }) {
         >
           Novo poročilo
         </button>
+        <button
+          className={activePage === 'account' ? 'active' : ''}
+          onClick={() => onNavigate('account')}
+          type="button"
+        >
+          Moj račun
+        </button>
         {isAdministrator && (
           <>
             <button

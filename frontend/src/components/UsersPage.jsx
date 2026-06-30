@@ -3,6 +3,7 @@ import {
   assignUserRole,
   createUser,
   getUsers,
+  resetUserPassword,
   revokeUserRole,
   updateUser,
 } from '../api'
@@ -57,6 +58,11 @@ function UsersPage({ currentUser, onCurrentUserUpdated }) {
   const [userForm, setUserForm] = useState(emptyUserForm())
   const [editing, setEditing] = useState(false)
   const [editForm, setEditForm] = useState(null)
+  const [resettingPassword, setResettingPassword] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({
+    geslo: '',
+    potrditev_gesla: '',
+  })
   const [roleFormOpen, setRoleFormOpen] = useState(false)
   const [roleForm, setRoleForm] = useState({
     vloga_id: '',
@@ -117,6 +123,8 @@ function UsersPage({ currentUser, onCurrentUserUpdated }) {
     setCreating(false)
     setEditing(false)
     setEditForm(null)
+    setResettingPassword(false)
+    setPasswordForm({ geslo: '', potrditev_gesla: '' })
     setRoleFormOpen(false)
     setRevokeAssignment(null)
     setError('')
@@ -136,10 +144,44 @@ function UsersPage({ currentUser, onCurrentUserUpdated }) {
   function openEditUser() {
     setEditForm(editFormFromUser(selectedUser))
     setEditing(true)
+    setResettingPassword(false)
     setRoleFormOpen(false)
     setRevokeAssignment(null)
     setError('')
     setNotification('')
+  }
+
+  function openPasswordReset() {
+    setPasswordForm({ geslo: '', potrditev_gesla: '' })
+    setResettingPassword(true)
+    setEditing(false)
+    setRoleFormOpen(false)
+    setRevokeAssignment(null)
+    setError('')
+    setNotification('')
+  }
+
+  async function handlePasswordReset(event) {
+    event.preventDefault()
+    setError('')
+
+    if (passwordForm.geslo !== passwordForm.potrditev_gesla) {
+      setError('Vneseni gesli se ne ujemata.')
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      await resetUserPassword(selectedUser.id, passwordForm.geslo)
+      setResettingPassword(false)
+      setPasswordForm({ geslo: '', potrditev_gesla: '' })
+      setNotification('Začetno geslo uporabnika je ponastavljeno.')
+    } catch (saveError) {
+      setError(saveError.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleUpdateUser(event) {
@@ -264,6 +306,8 @@ function UsersPage({ currentUser, onCurrentUserUpdated }) {
             setCreating(true)
             setEditing(false)
             setEditForm(null)
+            setResettingPassword(false)
+            setPasswordForm({ geslo: '', potrditev_gesla: '' })
             setError('')
             setNotification('')
           }}
@@ -418,18 +462,86 @@ function UsersPage({ currentUser, onCurrentUserUpdated }) {
                     <p>@{selectedUser.uporabnisko_ime} · {selectedUser.e_posta}</p>
                   </div>
                 </div>
-                {!editing && (
-                  <button
-                    className="button ghost small"
-                    onClick={openEditUser}
-                    type="button"
-                  >
-                    Uredi podatke
-                  </button>
+                {!editing && !resettingPassword && (
+                  <div className="user-detail-actions">
+                    <button
+                      className="button ghost small"
+                      onClick={openEditUser}
+                      type="button"
+                    >
+                      Uredi podatke
+                    </button>
+                    {selectedUser.id !== currentUser.id && (
+                      <button
+                        className="button secondary small"
+                        onClick={openPasswordReset}
+                        type="button"
+                      >
+                        Ponastavi geslo
+                      </button>
+                    )}
+                  </div>
                 )}
               </header>
 
-              {editing ? (
+              {resettingPassword ? (
+                <form className="password-reset-form" onSubmit={handlePasswordReset}>
+                  <div>
+                    <p className="eyebrow">Nova prijava</p>
+                    <h3>Ponastavi geslo</h3>
+                    <p>
+                      Uporabniku {selectedUser.ime} {selectedUser.priimek} nastavi novo
+                      začetno geslo.
+                    </p>
+                  </div>
+                  <div className="password-reset-fields">
+                    <label>
+                      <span>Novo geslo</span>
+                      <input
+                        autoComplete="new-password"
+                        minLength="8"
+                        onChange={(event) => setPasswordForm((current) => ({
+                          ...current,
+                          geslo: event.target.value,
+                        }))}
+                        required
+                        type="password"
+                        value={passwordForm.geslo}
+                      />
+                    </label>
+                    <label>
+                      <span>Ponovi novo geslo</span>
+                      <input
+                        autoComplete="new-password"
+                        minLength="8"
+                        onChange={(event) => setPasswordForm((current) => ({
+                          ...current,
+                          potrditev_gesla: event.target.value,
+                        }))}
+                        required
+                        type="password"
+                        value={passwordForm.potrditev_gesla}
+                      />
+                    </label>
+                  </div>
+                  <div className="profile-edit-actions">
+                    <button
+                      className="button ghost small"
+                      onClick={() => {
+                        setResettingPassword(false)
+                        setPasswordForm({ geslo: '', potrditev_gesla: '' })
+                        setError('')
+                      }}
+                      type="button"
+                    >
+                      Prekliči
+                    </button>
+                    <button className="button primary small" disabled={saving} type="submit">
+                      {saving ? 'Ponastavljam ...' : 'Nastavi novo geslo'}
+                    </button>
+                  </div>
+                </form>
+              ) : editing ? (
                 <form className="user-edit-form" onSubmit={handleUpdateUser}>
                   <div className="user-form-grid">
                     <label>
@@ -524,7 +636,7 @@ function UsersPage({ currentUser, onCurrentUserUpdated }) {
                 </dl>
               )}
 
-              {!editing && (
+              {!editing && !resettingPassword && (
                 <section className="user-roles-section">
                   <div className="field-editor-heading">
                     <div>

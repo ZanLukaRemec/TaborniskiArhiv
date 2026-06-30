@@ -5,6 +5,7 @@ import AuditLogPage from './components/AuditLogPage'
 import ArchivePage from './components/ArchivePage'
 import DashboardPage from './components/DashboardPage'
 import LoginPage from './components/LoginPage'
+import AccountPage from './components/AccountPage'
 import ReportPage from './components/ReportPage'
 import ReportWizard from './components/ReportWizard'
 import TemplatesPage from './components/TemplatesPage'
@@ -19,6 +20,7 @@ const PAGE_TITLES = {
   templates: 'Predloge poročil',
   audit: 'Revizijski dnevnik',
   users: 'Uporabniki in vloge',
+  account: 'Moj račun',
 }
 
 function App() {
@@ -117,6 +119,10 @@ function App() {
           onOpenReport={openReport}
           user={user}
         />
+      )}
+
+      {page === 'account' && (
+        <AccountPage user={user} />
       )}
 
       {page === 'archive' && (

@@ -119,6 +119,14 @@ export function updateUser(userId, user) {
   })
 }
 
+export function resetUserPassword(userId, password) {
+  return requestJson(`/api/uporabniki/${userId}/ponastavi-geslo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ geslo: password }),
+  })
+}
+
 export function assignUserRole(userId, assignment) {
   return requestJson(`/api/uporabniki/${userId}/vloge`, {
     method: 'POST',
@@ -148,6 +156,14 @@ export async function login(credentials) {
   })
 
   return data.user
+}
+
+export function changePassword(passwords) {
+  return requestJson('/api/auth/geslo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(passwords),
+  })
 }
 
 export function logout() {

@@ -8,6 +8,8 @@ const ACTION_LABELS = {
   DELETE: 'Izbrisano',
   ASSIGN: 'Vloga dodeljena',
   REVOKE: 'Vloga zaključena',
+  PASSWORD_CHANGE: 'Geslo spremenjeno',
+  PASSWORD_RESET: 'Geslo ponastavljeno',
 }
 
 const TABLE_LABELS = {

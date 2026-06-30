@@ -340,6 +340,73 @@ router.put('/uporabniki/:id', async (req, res) => {
   }
 });
 
+router.post('/uporabniki/:id/ponastavi-geslo', async (req, res) => {
+  const userId = Number(req.params.id);
+  const password = String(req.body.geslo || '');
+
+  if (!Number.isInteger(userId)) {
+    res.status(400).json({ error: 'Uporabnik ni veljaven.' });
+    return;
+  }
+
+  if (userId === req.session.user.id) {
+    res.status(409).json({
+      error: 'Lastno geslo spremeni na zaslonu Moj račun.',
+    });
+    return;
+  }
+
+  if (password.length < 8 || password.length > 128) {
+    res.status(400).json({ error: 'Geslo mora vsebovati od 8 do 128 znakov.' });
+    return;
+  }
+
+  let passwordHash;
+
+  try {
+    passwordHash = await argon2.hash(password);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Gesla ni bilo mogoče varno pripraviti.' });
+    return;
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [users] = await connection.query(
+      'SELECT id FROM clan WHERE id = ? LIMIT 1 FOR UPDATE',
+      [userId],
+    );
+
+    if (!users.length) {
+      await connection.rollback();
+      res.status(404).json({ error: 'Uporabnik ne obstaja.' });
+      return;
+    }
+
+    await connection.query(
+      'UPDATE clan SET geslo_hash = ? WHERE id = ?',
+      [passwordHash, userId],
+    );
+    await connection.query(`
+      INSERT INTO dnevnik_sprememb (akcija, tabela, zapis_id, avtor_id)
+      VALUES ('PASSWORD_RESET', 'clan', ?, ?)
+    `, [userId, req.session.user.id]);
+
+    await connection.commit();
+    res.status(204).end();
+  } catch (error) {
+    await connection.rollback();
+    console.error(error);
+    res.status(500).json({ error: 'Gesla ni bilo mogoče ponastaviti.' });
+  } finally {
+    connection.release();
+  }
+});
+
 router.post('/uporabniki/:id/vloge', async (req, res) => {
   const userId = Number(req.params.id);
   const roleId = Number(req.body.vloga_id);

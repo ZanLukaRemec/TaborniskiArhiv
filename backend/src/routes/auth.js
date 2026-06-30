@@ -1,5 +1,6 @@
 const argon2 = require('argon2');
 const express = require('express');
+const { requireAuth } = require('../auth');
 const pool = require('../db');
 
 const router = express.Router();
@@ -71,6 +72,77 @@ router.get('/auth/me', (req, res) => {
   }
 
   res.json({ user: req.session.user });
+});
+
+router.post('/auth/geslo', requireAuth, async (req, res) => {
+  const currentPassword = String(req.body.trenutno_geslo || '');
+  const newPassword = String(req.body.novo_geslo || '');
+
+  if (newPassword.length < 8 || newPassword.length > 128) {
+    res.status(400).json({ error: 'Novo geslo mora vsebovati od 8 do 128 znakov.' });
+    return;
+  }
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [members] = await connection.query(`
+      SELECT geslo_hash
+      FROM clan
+      WHERE id = ?
+      LIMIT 1
+      FOR UPDATE
+    `, [req.session.user.id]);
+    const member = members[0];
+
+    if (!member) {
+      await connection.rollback();
+      res.status(404).json({ error: 'Uporabniški račun ne obstaja.' });
+      return;
+    }
+
+    let passwordMatches = false;
+
+    try {
+      passwordMatches = await argon2.verify(member.geslo_hash, currentPassword);
+    } catch {
+      passwordMatches = false;
+    }
+
+    if (!passwordMatches) {
+      await connection.rollback();
+      res.status(401).json({ error: 'Trenutno geslo ni pravilno.' });
+      return;
+    }
+
+    if (newPassword === currentPassword) {
+      await connection.rollback();
+      res.status(409).json({ error: 'Novo geslo mora biti drugačno od trenutnega.' });
+      return;
+    }
+
+    const passwordHash = await argon2.hash(newPassword);
+
+    await connection.query(
+      'UPDATE clan SET geslo_hash = ? WHERE id = ?',
+      [passwordHash, req.session.user.id],
+    );
+    await connection.query(`
+      INSERT INTO dnevnik_sprememb (akcija, tabela, zapis_id, avtor_id)
+      VALUES ('PASSWORD_CHANGE', 'clan', ?, ?)
+    `, [req.session.user.id, req.session.user.id]);
+
+    await connection.commit();
+    res.status(204).end();
+  } catch (error) {
+    await connection.rollback();
+    console.error(error);
+    res.status(500).json({ error: 'Gesla ni bilo mogoče spremeniti.' });
+  } finally {
+    connection.release();
+  }
 });
 
 router.post('/auth/odjava', (req, res) => {
